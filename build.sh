@@ -2,7 +2,7 @@
 set -e
 
 echo "==> Instalando dependências Python..."
-pip install -r backend/requirements.txt
+pip3 install -r backend/requirements.txt
 
 echo "==> Instalando dependências Node.js e gerando build do frontend..."
 cd frontend
