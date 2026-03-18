@@ -1,0 +1,23 @@
+# Web Framework
+fastapi==0.115.5
+uvicorn[standard]==0.32.1
+gunicorn==23.0.0
+
+# Database
+sqlalchemy==2.0.36
+aiosqlite==0.20.0      # SQLite (desenvolvimento local)
+asyncpg==0.30.0        # PostgreSQL (produção)
+
+# Settings
+pydantic-settings==2.6.1
+
+# Document Processing
+PyMuPDF==1.25.5
+
+# AI Providers
+anthropic>=0.39.0
+openai>=1.57.0
+
+# Utilities
+python-multipart==0.0.18
+aiofiles==24.1.0

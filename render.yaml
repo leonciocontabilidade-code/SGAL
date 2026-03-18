@@ -1,0 +1,21 @@
+databases:
+  - name: sgal-db
+    databaseName: sgal
+    user: sgal
+
+services:
+  - type: web
+    name: sgal
+    env: python
+    plan: free
+    buildCommand: bash build.sh
+    startCommand: cd backend && uvicorn app.main:app --host 0.0.0.0 --port $PORT
+    envVars:
+      - key: DATABASE_URL
+        fromDatabase:
+          name: sgal-db
+          property: connectionString
+      - key: ANTHROPIC_API_KEY
+        sync: false
+      - key: ALLOWED_ORIGINS
+        value: "*"

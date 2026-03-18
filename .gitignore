@@ -1,0 +1,24 @@
+# Python
+__pycache__/
+*.py[cod]
+*.pyo
+.venv/
+venv/
+*.egg-info/
+dist/
+build/
+.env
+
+# Node
+node_modules/
+frontend/dist/
+
+# Uploads & database
+backend/uploads/
+backend/*.db
+backend/*.db-shm
+backend/*.db-wal
+
+# OS
+.DS_Store
+Thumbs.db
