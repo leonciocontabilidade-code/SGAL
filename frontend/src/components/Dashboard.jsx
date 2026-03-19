@@ -160,7 +160,7 @@ export function Dashboard({ onLogout }) {
       )}
       {/* Header */}
       <header className="sticky top-0 z-10 shadow-md" style={{ backgroundColor: "#08332C" }}>
-        <div className="max-w-7xl mx-auto px-6 py-4 flex items-center justify-between">
+        <div className="w-full px-4 py-3 flex items-center justify-between">
           <div className="flex items-center gap-3">
             <div className="p-2 rounded-lg" style={{ backgroundColor: "#0C483E" }}>
               <FileText className="w-6 h-6" style={{ color: "#C6B185" }} />
@@ -193,16 +193,16 @@ export function Dashboard({ onLogout }) {
         </div>
       </header>
 
-      <main className="max-w-7xl mx-auto px-6 py-8 space-y-8">
+      <main className="w-full px-4 py-4 space-y-4">
         {error && (
-          <div className="rounded-lg bg-red-50 border border-red-200 p-4 text-red-700 text-sm">
+          <div className="rounded-lg bg-red-50 border border-red-200 p-3 text-red-700 text-sm">
             Erro ao carregar dados: {error}
           </div>
         )}
 
         {/* Cards de estatísticas */}
         {stats && (
-          <div className="grid grid-cols-2 md:grid-cols-5 gap-4">
+          <div className="grid grid-cols-2 md:grid-cols-5 gap-3">
             <StatsCard label="Total" valor={stats.total} cor="azul" icone={FileText} />
             <StatsCard label="Em dia" valor={stats.verdes} cor="verde" icone={CheckCircle} sublabel="> 60 dias" />
             <StatsCard label="Atenção" valor={stats.amarelos} cor="amarelo" icone={AlertTriangle} sublabel="15–60 dias" />
@@ -211,9 +211,9 @@ export function Dashboard({ onLogout }) {
           </div>
         )}
 
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
+        <div className="grid grid-cols-1 lg:grid-cols-4 gap-4">
           {/* Upload */}
-          <div className="lg:col-span-1 space-y-6">
+          <div className="lg:col-span-1 space-y-4">
             <section className="rounded-xl shadow-sm overflow-hidden" style={{ backgroundColor: "white", borderTop: "3px solid #0C483E" }}>
               {/* Abas */}
               <div className="flex border-b" style={{ borderColor: "#EADAB8" }}>
@@ -247,10 +247,10 @@ export function Dashboard({ onLogout }) {
           </div>
 
           {/* Tabela */}
-          <div className="lg:col-span-2">
+          <div className="lg:col-span-3">
             <section className="rounded-xl shadow-sm overflow-hidden" style={{ backgroundColor: "white" }}>
               {/* Toolbar */}
-              <div className="px-6 py-4 border-b flex flex-col sm:flex-row gap-3" style={{ borderColor: "#EADAB8" }}>
+              <div className="px-4 py-3 border-b flex flex-col sm:flex-row gap-2" style={{ borderColor: "#EADAB8" }}>
                 <input
                   type="text"
                   placeholder="Buscar por empresa, CNPJ ou protocolo..."
