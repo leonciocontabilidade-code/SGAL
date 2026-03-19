@@ -1,13 +1,18 @@
 """
-Extração de texto de PDFs e imagens usando PyMuPDF.
+Extração de texto de PDFs e imagens usando PyMuPDF (com fallback para pypdf).
 """
 import io
 import logging
 from pathlib import Path
 
-import fitz  # PyMuPDF
-
 logger = logging.getLogger(__name__)
+
+try:
+    import fitz  # PyMuPDF
+    FITZ_AVAILABLE = True
+except Exception:
+    FITZ_AVAILABLE = False
+    logger.warning("PyMuPDF não disponível. Usando pypdf como fallback.")
 
 SUPPORTED_EXTENSIONS = {".pdf", ".png", ".jpg", ".jpeg", ".tiff", ".bmp"}
 
@@ -15,7 +20,6 @@ SUPPORTED_EXTENSIONS = {".pdf", ".png", ".jpg", ".jpeg", ".tiff", ".bmp"}
 def extrair_texto(caminho_arquivo: str) -> str:
     """
     Extrai texto de um PDF ou imagem.
-    Para imagens, converte para PDF internamente e aplica extração.
     Retorna o texto concatenado de todas as páginas.
     """
     path = Path(caminho_arquivo)
@@ -30,13 +34,18 @@ def extrair_texto(caminho_arquivo: str) -> str:
 
 
 def _extrair_de_pdf(caminho: str) -> str:
+    if FITZ_AVAILABLE:
+        return _extrair_de_pdf_fitz(caminho)
+    return _extrair_de_pdf_pypdf(caminho)
+
+
+def _extrair_de_pdf_fitz(caminho: str) -> str:
     doc = fitz.open(caminho)
     paginas: list[str] = []
 
     for num_pagina, pagina in enumerate(doc, start=1):
         texto = pagina.get_text("text")
 
-        # Se a página não tem texto (PDF escaneado), tenta OCR via pymupdf
         if not texto.strip():
             logger.info("Página %d sem texto detectável, aplicando OCR...", num_pagina)
             texto = _ocr_pagina(pagina)
@@ -47,8 +56,21 @@ def _extrair_de_pdf(caminho: str) -> str:
     return "\n--- PÁGINA SEPARADORA ---\n".join(paginas)
 
 
+def _extrair_de_pdf_pypdf(caminho: str) -> str:
+    from pypdf import PdfReader
+    reader = PdfReader(caminho)
+    paginas: list[str] = []
+    for pagina in reader.pages:
+        texto = pagina.extract_text() or ""
+        paginas.append(texto)
+    return "\n--- PÁGINA SEPARADORA ---\n".join(paginas)
+
+
 def _extrair_de_imagem(caminho: str) -> str:
     """Abre a imagem como documento PyMuPDF e extrai texto via OCR."""
+    if not FITZ_AVAILABLE:
+        logger.warning("PyMuPDF indisponível, não é possível processar imagens.")
+        return ""
     doc = fitz.open(caminho)
     pagina = doc[0]
     texto = _ocr_pagina(pagina)
@@ -56,13 +78,8 @@ def _extrair_de_imagem(caminho: str) -> str:
     return texto
 
 
-def _ocr_pagina(pagina: fitz.Page) -> str:
-    """
-    Aplica OCR em uma página usando PyMuPDF (requer Tesseract instalado).
-    Fallback: retorna string vazia se OCR não estiver disponível.
-    """
+def _ocr_pagina(pagina) -> str:
     try:
-        # get_textpage_ocr requer tesseract instalado no sistema
         tp = pagina.get_textpage_ocr(language="por", dpi=300, full=True)
         return pagina.get_text(textpage=tp)
     except Exception as exc:
@@ -72,9 +89,11 @@ def _ocr_pagina(pagina: fitz.Page) -> str:
 
 def obter_primeira_pagina_como_bytes(caminho: str) -> bytes:
     """Renderiza a primeira página como PNG para preview."""
+    if not FITZ_AVAILABLE:
+        return b""
     doc = fitz.open(caminho)
     pagina = doc[0]
-    mat = fitz.Matrix(2.0, 2.0)  # 2x zoom para melhor qualidade
+    mat = fitz.Matrix(2.0, 2.0)
     pix = pagina.get_pixmap(matrix=mat)
     img_bytes = pix.tobytes("png")
     doc.close()

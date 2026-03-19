@@ -13,6 +13,7 @@ pydantic-settings==2.6.1
 
 # Document Processing
 PyMuPDF==1.25.5
+pypdf==5.1.0
 
 # AI Providers
 anthropic>=0.39.0
