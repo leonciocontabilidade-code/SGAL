@@ -25,6 +25,7 @@ class Settings(BaseSettings):
     # App
     app_name: str = "SGAL - Sistema de Gestão de Alvarás e Licenças"
     debug: bool = False
+    app_password: str = "sgal2024"
 
     model_config = {
         "env_file": str(_ENV_FILE),

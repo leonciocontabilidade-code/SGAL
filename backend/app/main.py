@@ -10,7 +10,7 @@ from fastapi.staticfiles import StaticFiles
 
 from app.config import get_settings
 from app.database import init_db
-from app.routers import alvaras, dashboard
+from app.routers import alvaras, dashboard, auth
 from app.tasks.deadline_checker import iniciar_verificador_prazos
 
 logging.basicConfig(
@@ -59,6 +59,7 @@ app.add_middleware(
 
 app.include_router(alvaras.router, prefix="/api/v1")
 app.include_router(dashboard.router, prefix="/api/v1")
+app.include_router(auth.router, prefix="/api")
 
 
 @app.get("/health")

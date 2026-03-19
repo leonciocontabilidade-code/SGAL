@@ -46,7 +46,7 @@ function agruparPorMes(lista) {
   return Object.entries(grupos).sort(([a], [b]) => a.localeCompare(b));
 }
 
-export function Dashboard() {
+export function Dashboard({ onLogout }) {
   const { data, loading, error, recarregar } = useDashboard();
   const [filtroTipo, setFiltroTipo] = useState("TODOS");
   const [busca, setBusca] = useState("");
@@ -131,11 +131,11 @@ export function Dashboard() {
   };
 
   return (
-    <div className="min-h-screen bg-gray-100">
+    <div className="min-h-screen" style={{ backgroundColor: "#EADAB8" }}>
       {/* Toasts */}
       <div className="fixed bottom-6 right-6 z-50 space-y-2">
         {toasts.map((t) => (
-          <div key={t.id} className={`px-4 py-3 rounded-xl shadow-lg text-sm font-medium text-white transition-all ${t.tipo === "error" ? "bg-red-600" : "bg-green-600"}`}>
+          <div key={t.id} className={`px-4 py-3 rounded-xl shadow-lg text-sm font-medium text-white transition-all ${t.tipo === "error" ? "bg-red-600" : "bg-green-700"}`}>
             {t.msg}
           </div>
         ))}
@@ -150,25 +150,37 @@ export function Dashboard() {
         />
       )}
       {/* Header */}
-      <header className="bg-white border-b sticky top-0 z-10 shadow-sm">
+      <header className="sticky top-0 z-10 shadow-md" style={{ backgroundColor: "#08332C" }}>
         <div className="max-w-7xl mx-auto px-6 py-4 flex items-center justify-between">
           <div className="flex items-center gap-3">
-            <div className="p-2 bg-blue-600 rounded-lg">
-              <FileText className="w-6 h-6 text-white" />
+            <div className="p-2 rounded-lg" style={{ backgroundColor: "#0C483E" }}>
+              <FileText className="w-6 h-6" style={{ color: "#C6B185" }} />
             </div>
             <div>
-              <h1 className="text-lg font-bold text-gray-900">SGAL</h1>
-              <p className="text-xs text-gray-400">Gestão de Alvarás e Licenças</p>
+              <h1 className="text-lg font-bold" style={{ color: "#C6B185" }}>SGAL</h1>
+              <p className="text-xs" style={{ color: "#EADAB8", opacity: 0.7 }}>Gestão de Alvarás e Licenças</p>
             </div>
           </div>
-          <button
-            onClick={recarregar}
-            disabled={loading}
-            className="flex items-center gap-2 text-sm text-gray-500 hover:text-blue-600 transition-colors disabled:opacity-50"
-          >
-            <RefreshCw className={`w-4 h-4 ${loading ? "animate-spin" : ""}`} />
-            Atualizar
-          </button>
+          <div className="flex items-center gap-4">
+            <button
+              onClick={recarregar}
+              disabled={loading}
+              className="flex items-center gap-2 text-sm transition-opacity disabled:opacity-50"
+              style={{ color: "#C6B185" }}
+            >
+              <RefreshCw className={`w-4 h-4 ${loading ? "animate-spin" : ""}`} />
+              Atualizar
+            </button>
+            {onLogout && (
+              <button
+                onClick={onLogout}
+                className="text-xs px-3 py-1 rounded-lg transition-opacity"
+                style={{ color: "#EADAB8", backgroundColor: "#052B25" }}
+              >
+                Sair
+              </button>
+            )}
+          </div>
         </div>
       </header>
 
@@ -193,14 +205,14 @@ export function Dashboard() {
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
           {/* Upload */}
           <div className="lg:col-span-1 space-y-6">
-            <section className="bg-white rounded-xl shadow-sm border p-6">
-              <h2 className="text-base font-semibold text-gray-800 mb-4">Novo Documento</h2>
+            <section className="rounded-xl shadow-sm p-6" style={{ backgroundColor: "white", borderTop: "3px solid #0C483E" }}>
+              <h2 className="text-base font-semibold mb-4" style={{ color: "#08332C" }}>Novo Documento</h2>
               <UploadZone onUploadSuccess={recarregar} />
             </section>
 
             {/* Painel de alertas */}
             {alvaras.length > 0 && (
-              <section className="bg-white rounded-xl shadow-sm border p-6">
+              <section className="rounded-xl shadow-sm p-6" style={{ backgroundColor: "white", borderTop: "3px solid #C6B185" }}>
                 <AlertPanel alvaras={alvaras} />
               </section>
             )}
@@ -208,22 +220,24 @@ export function Dashboard() {
 
           {/* Tabela */}
           <div className="lg:col-span-2">
-            <section className="bg-white rounded-xl shadow-sm border overflow-hidden">
+            <section className="rounded-xl shadow-sm overflow-hidden" style={{ backgroundColor: "white" }}>
               {/* Toolbar */}
-              <div className="px-6 py-4 border-b flex flex-col sm:flex-row gap-3">
+              <div className="px-6 py-4 border-b flex flex-col sm:flex-row gap-3" style={{ borderColor: "#EADAB8" }}>
                 <input
                   type="text"
                   placeholder="Buscar por empresa, CNPJ ou protocolo..."
                   value={busca}
                   onChange={(e) => setBusca(e.target.value)}
-                  className="flex-1 rounded-lg border border-gray-200 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  className="flex-1 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2"
+                  style={{ border: "1px solid #C6B185", focusRingColor: "#0C483E" }}
                 />
                 <div className="flex items-center gap-2">
-                  <Filter className="w-4 h-4 text-gray-400" />
+                  <Filter className="w-4 h-4" style={{ color: "#0C483E" }} />
                   <select
                     value={filtroTipo}
                     onChange={(e) => setFiltroTipo(e.target.value)}
-                    className="rounded-lg border border-gray-200 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+                    className="rounded-lg px-3 py-2 text-sm focus:outline-none"
+                    style={{ border: "1px solid #C6B185", color: "#08332C" }}
                   >
                     {TIPOS.map((t) => (
                       <option key={t} value={t}>
@@ -234,13 +248,12 @@ export function Dashboard() {
                   <button
                     onClick={() => setAgrupar((v) => !v)}
                     title={agrupar ? "Desagrupar meses" : "Agrupar por mês"}
-                    className={`px-3 py-2 rounded-lg border text-xs font-medium transition-colors ${
-                      agrupar
-                        ? "bg-blue-50 border-blue-200 text-blue-700"
-                        : "border-gray-200 text-gray-500 hover:bg-gray-50"
-                    }`}
+                    className="px-3 py-2 rounded-lg text-xs font-medium transition-colors"
+                    style={agrupar
+                      ? { backgroundColor: "#EADAB8", color: "#08332C", border: "1px solid #C6B185" }
+                      : { backgroundColor: "white", color: "#0C483E", border: "1px solid #C6B185" }}
                   >
-                    📅 {agrupar ? "Por mês" : "Por mês"}
+                    📅 Por mês
                   </button>
                 </div>
               </div>
@@ -249,12 +262,13 @@ export function Dashboard() {
               <div className="overflow-x-auto">
                 <table className="w-full text-sm">
                   <thead>
-                    <tr className="bg-gray-50 border-b">
+                    <tr style={{ backgroundColor: "#08332C" }}>
                       {COLUNAS.map((col) => (
                         <th
                           key={col.key}
                           onClick={() => toggleOrdenacao(col.key)}
-                          className="px-4 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wide cursor-pointer hover:text-gray-700 select-none whitespace-nowrap"
+                          className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wide cursor-pointer select-none whitespace-nowrap"
+                          style={{ color: "#C6B185" }}
                         >
                           <span className="flex items-center gap-1">
                             {col.label}
@@ -264,7 +278,7 @@ export function Dashboard() {
                           </span>
                         </th>
                       ))}
-                      <th className="px-4 py-3 text-right text-xs font-semibold text-gray-500 uppercase">Ações</th>
+                      <th className="px-4 py-3 text-right text-xs font-semibold uppercase" style={{ color: "#C6B185" }}>Ações</th>
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-gray-100">
@@ -286,10 +300,10 @@ export function Dashboard() {
                       ? agruparPorMes(filtrados).flatMap(([chave, grupo]) => [
                           <tr key={`mes-${chave}`}>
                             <td colSpan={COLUNAS.length + 1} className="px-4 pt-4 pb-1">
-                              <span className="inline-flex items-center gap-2 text-xs font-bold text-gray-500 uppercase tracking-widest">
-                                <span className="w-2 h-2 rounded-full bg-blue-400 inline-block" />
+                              <span className="inline-flex items-center gap-2 text-xs font-bold uppercase tracking-widest" style={{ color: "#0C483E" }}>
+                                <span className="w-2 h-2 rounded-full inline-block" style={{ backgroundColor: "#C6B185" }} />
                                 {chave === "9999-99" ? "Sem data de vencimento" : labelMes(grupo[0]?.data_vencimento)}
-                                <span className="font-normal text-gray-400">({grupo.length})</span>
+                                <span className="font-normal" style={{ color: "#0C483E", opacity: 0.6 }}>({grupo.length})</span>
                               </span>
                             </td>
                           </tr>,
@@ -302,7 +316,7 @@ export function Dashboard() {
               </div>
 
               {filtrados.length > 0 && (
-                <div className="px-6 py-3 border-t text-xs text-gray-400">
+                <div className="px-6 py-3 border-t text-xs" style={{ color: "#0C483E", borderColor: "#EADAB8" }}>
                   {filtrados.length} de {alvaras.length} alvará{alvaras.length !== 1 ? "s" : ""}
                 </div>
               )}
@@ -351,7 +365,8 @@ function LinhaAlvara({ alvara, formatarData, corLinha, deletando, onDeletar, onE
         <div className="flex items-center justify-end gap-1">
           <button
             onClick={() => onEditar(alvara)}
-            className="p-1.5 rounded text-gray-400 hover:text-blue-600 hover:bg-blue-50 transition-colors"
+            className="p-1.5 rounded transition-colors"
+            style={{ color: "#0C483E" }}
             title="Editar dados"
           >
             <Edit2 className="w-4 h-4" />
