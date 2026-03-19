@@ -69,7 +69,7 @@ export function TipoBadge({ tipo }) {
     SANITARIO: "Alvará Sanitário",
     BOMBEIROS: "Certificado do Bombeiros",
     FUNCIONAMENTO: "Alvará de Localização e Funcionamento",
-    AMA: "AMA",
+    AMA: "Alvará Ambiental",
     DESCONHECIDO: "Desconhecido",
   };
 

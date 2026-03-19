@@ -16,7 +16,7 @@ const TIPOS = [
   { value: "SANITARIO",   label: "Alvará Sanitário" },
   { value: "BOMBEIROS",   label: "Certificado do Bombeiros" },
   { value: "FUNCIONAMENTO", label: "Alvará de Localização e Funcionamento" },
-  { value: "AMA",          label: "AMA" },
+  { value: "AMA",          label: "Alvará Ambiental" },
 ];
 
 const COLUNAS = [
