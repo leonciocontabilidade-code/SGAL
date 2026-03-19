@@ -11,7 +11,13 @@ import { StatusBadge, TipoBadge } from "./StatusBadge";
 import { EditModal } from "./EditModal";
 import { api } from "../services/api";
 
-const TIPOS = ["TODOS", "SANITARIO", "BOMBEIROS", "FUNCIONAMENTO", "AMA"];
+const TIPOS = [
+  { value: "TODOS",        label: "Todos os tipos" },
+  { value: "SANITARIO",   label: "Alvará Sanitário" },
+  { value: "BOMBEIROS",   label: "Certificado do Bombeiros" },
+  { value: "FUNCIONAMENTO", label: "Alvará de Localização e Funcionamento" },
+  { value: "AMA",          label: "AMA" },
+];
 
 const COLUNAS = [
   { key: "razao_social", label: "Empresa" },
@@ -62,6 +68,7 @@ export function Dashboard({ onLogout }) {
 
   const filtrados = alvaras
     .filter((a) => filtroTipo === "TODOS" || a.tipo === filtroTipo)
+
     .filter((a) => {
       if (!busca) return true;
       const q = busca.toLowerCase();
@@ -240,9 +247,7 @@ export function Dashboard({ onLogout }) {
                     style={{ border: "1px solid #C6B185", color: "#08332C" }}
                   >
                     {TIPOS.map((t) => (
-                      <option key={t} value={t}>
-                        {t === "TODOS" ? "Todos os tipos" : t}
-                      </option>
+                      <option key={t.value} value={t.value}>{t.label}</option>
                     ))}
                   </select>
                   <button

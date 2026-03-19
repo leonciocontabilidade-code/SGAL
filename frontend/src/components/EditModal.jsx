@@ -2,7 +2,13 @@ import { useState, useEffect } from "react";
 import { X, Save, Loader2 } from "lucide-react";
 import { api } from "../services/api";
 
-const TIPOS = ["SANITARIO", "BOMBEIROS", "FUNCIONAMENTO", "AMA", "DESCONHECIDO"];
+const TIPOS = [
+  { value: "SANITARIO",     label: "Alvará Sanitário" },
+  { value: "BOMBEIROS",     label: "Certificado do Bombeiros" },
+  { value: "FUNCIONAMENTO", label: "Alvará de Localização e Funcionamento" },
+  { value: "AMA",           label: "AMA" },
+  { value: "DESCONHECIDO",  label: "Desconhecido" },
+];
 
 export function EditModal({ alvara, onClose, onSaved }) {
   const [form, setForm] = useState({
@@ -76,7 +82,7 @@ export function EditModal({ alvara, onClose, onSaved }) {
               className="w-full rounded-lg border border-gray-200 px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
             >
               {TIPOS.map((t) => (
-                <option key={t} value={t}>{t}</option>
+                <option key={t.value} value={t.value}>{t.label}</option>
               ))}
             </select>
           </div>

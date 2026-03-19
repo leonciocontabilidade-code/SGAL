@@ -66,9 +66,9 @@ export function TipoBadge({ tipo }) {
   };
 
   const labels = {
-    SANITARIO: "Sanitário",
-    BOMBEIROS: "Bombeiros",
-    FUNCIONAMENTO: "Funcionamento",
+    SANITARIO: "Alvará Sanitário",
+    BOMBEIROS: "Certificado do Bombeiros",
+    FUNCIONAMENTO: "Alvará de Localização e Funcionamento",
     AMA: "AMA",
     DESCONHECIDO: "Desconhecido",
   };
