@@ -9,6 +9,7 @@ import { AlertPanel } from "./AlertPanel";
 import { StatsCard } from "./StatsCard";
 import { StatusBadge, TipoBadge } from "./StatusBadge";
 import { EditModal } from "./EditModal";
+import { NovoAlvaraManual } from "./NovoAlvaraManual";
 import { api } from "../services/api";
 
 const TIPOS = [
@@ -58,6 +59,7 @@ export function Dashboard({ onLogout }) {
   const [busca, setBusca] = useState("");
   const [ordenacao, setOrdenacao] = useState({ key: "data_vencimento", dir: "asc" });
   const [agrupar, setAgrupar] = useState(true);
+  const [abaUpload, setAbaUpload] = useState("pdf"); // "pdf" | "manual"
   const [deletando, setDeletando] = useState(null);
   const [editando, setEditando] = useState(null);
   const [notificando, setNotificando] = useState(null);
@@ -212,9 +214,28 @@ export function Dashboard({ onLogout }) {
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
           {/* Upload */}
           <div className="lg:col-span-1 space-y-6">
-            <section className="rounded-xl shadow-sm p-6" style={{ backgroundColor: "white", borderTop: "3px solid #0C483E" }}>
-              <h2 className="text-base font-semibold mb-4" style={{ color: "#08332C" }}>Novo Documento</h2>
-              <UploadZone onUploadSuccess={recarregar} />
+            <section className="rounded-xl shadow-sm overflow-hidden" style={{ backgroundColor: "white", borderTop: "3px solid #0C483E" }}>
+              {/* Abas */}
+              <div className="flex border-b" style={{ borderColor: "#EADAB8" }}>
+                {[{ key: "pdf", label: "Upload PDF" }, { key: "manual", label: "Cadastro Manual" }].map((aba) => (
+                  <button
+                    key={aba.key}
+                    onClick={() => setAbaUpload(aba.key)}
+                    className="flex-1 px-4 py-3 text-sm font-semibold transition-colors"
+                    style={abaUpload === aba.key
+                      ? { backgroundColor: "#08332C", color: "#C6B185" }
+                      : { color: "#0C483E" }}
+                  >
+                    {aba.label}
+                  </button>
+                ))}
+              </div>
+              <div className="p-5">
+                {abaUpload === "pdf"
+                  ? <UploadZone onUploadSuccess={recarregar} />
+                  : <NovoAlvaraManual onSalvo={recarregar} />
+                }
+              </div>
             </section>
 
             {/* Painel de alertas */}

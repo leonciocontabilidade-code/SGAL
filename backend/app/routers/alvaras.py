@@ -98,6 +98,31 @@ async def upload_alvara(
     )
 
 
+# ── Cadastro Manual ───────────────────────────────────────────────────────────
+
+@router.post("/", response_model=AlvaraResponse, status_code=status.HTTP_201_CREATED)
+async def criar_alvara_manual(
+    dados: AlvaraUpdate,
+    db: AsyncSession = Depends(get_db),
+) -> AlvaraResponse:
+    """Cria um alvará manualmente sem upload de arquivo."""
+    alvara = Alvara(
+        nome_arquivo="Cadastro manual",
+        caminho_arquivo="",
+        razao_social=dados.razao_social,
+        cnpj=dados.cnpj,
+        tipo=dados.tipo or "DESCONHECIDO",
+        numero_protocolo=dados.numero_protocolo,
+        data_emissao=dados.data_emissao,
+        data_vencimento=dados.data_vencimento,
+        status_processamento=StatusProcessamento.CONCLUIDO,
+    )
+    db.add(alvara)
+    await db.flush()
+    await db.refresh(alvara)
+    return _to_response(alvara)
+
+
 # ── Listagem e Detalhes ───────────────────────────────────────────────────────
 
 @router.get("/", response_model=list[AlvaraResponse])

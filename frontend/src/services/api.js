@@ -28,6 +28,12 @@ export const api = {
     deletar: (id) => request(`/alvaras/${id}`, { method: "DELETE" }),
     listarAlertas: (id) => request(`/alvaras/${id}/alertas`),
     notificar: (id) => request(`/alvaras/${id}/notificar`, { method: "POST" }),
+    criar: (dados) =>
+      request("/alvaras/", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(dados),
+      }),
 
     upload: (arquivo) => {
       const formData = new FormData();
