@@ -1,7 +1,8 @@
-import { useState } from "react";
+import { useState, useCallback } from "react";
 import {
   FileText, RefreshCw, CheckCircle, AlertTriangle,
-  XCircle, HelpCircle, Filter, Trash2, Edit2, ChevronUp, ChevronDown, Bell
+  XCircle, HelpCircle, Filter, Trash2, Edit2, ChevronUp, ChevronDown, Bell,
+  Download, ChevronLeft, ChevronRight
 } from "lucide-react";
 import { useDashboard } from "../hooks/useDashboard";
 import { UploadZone } from "./UploadZone";
@@ -20,6 +21,14 @@ const TIPOS = [
   { value: "AMA",          label: "Alvará Ambiental" },
 ];
 
+const TIPO_LABELS = {
+  SANITARIO: "Alvará Sanitário",
+  BOMBEIROS: "Certificado do Bombeiros",
+  FUNCIONAMENTO: "Alvará de Localização e Funcionamento",
+  AMA: "Alvará Ambiental",
+  DESCONHECIDO: "Desconhecido",
+};
+
 const COLUNAS = [
   { key: "razao_social", label: "Empresa" },
   { key: "cnpj", label: "CNPJ" },
@@ -28,6 +37,7 @@ const COLUNAS = [
   { key: "data_vencimento", label: "Vencimento" },
   { key: "dias_para_vencer", label: "Dias" },
   { key: "status_vencimento", label: "Status" },
+  { key: "confianca_extracao", label: "IA%" },
 ];
 
 const MESES_PT = [
@@ -45,7 +55,7 @@ function agruparPorMes(lista) {
   const grupos = {};
   for (const a of lista) {
     const chave = a.data_vencimento
-      ? new Date(a.data_vencimento + "T00:00:00").toISOString().slice(0, 7) // "YYYY-MM"
+      ? new Date(a.data_vencimento + "T00:00:00").toISOString().slice(0, 7)
       : "9999-99";
     if (!grupos[chave]) grupos[chave] = [];
     grupos[chave].push(a);
@@ -56,11 +66,11 @@ function agruparPorMes(lista) {
 export function Dashboard({ onLogout }) {
   const { data, loading, error, recarregar } = useDashboard();
   const [filtroTipo, setFiltroTipo] = useState("TODOS");
-  const [filtroStatus, setFiltroStatus] = useState(null); // null | "VERDE" | "AMARELO" | "VERMELHO" | "SEM_DATA"
+  const [filtroStatus, setFiltroStatus] = useState(null);
   const [busca, setBusca] = useState("");
   const [ordenacao, setOrdenacao] = useState({ key: "data_vencimento", dir: "asc" });
   const [agrupar, setAgrupar] = useState(true);
-  const [abaUpload, setAbaUpload] = useState("pdf"); // "pdf" | "manual"
+  const [abaUpload, setAbaUpload] = useState("pdf");
   const [deletando, setDeletando] = useState(null);
   const [editando, setEditando] = useState(null);
   const [notificando, setNotificando] = useState(null);
@@ -68,10 +78,14 @@ export function Dashboard({ onLogout }) {
 
   const alvaras = data?.alvaras ?? [];
   const stats = data?.stats;
+  const totalFiltrado = data?.total_filtrado ?? alvaras.length;
+  const totalPaginas = data?.total_paginas ?? 1;
+  const paginaAtual = data?.pagina ?? 1;
 
   const toggleFiltroStatus = (status) =>
     setFiltroStatus((prev) => (prev === status ? null : status));
 
+  // Filtro e ordenação local (sobre a página atual)
   const filtrados = alvaras
     .filter((a) => filtroTipo === "TODOS" || a.tipo === filtroTipo)
     .filter((a) => {
@@ -90,7 +104,6 @@ export function Dashboard({ onLogout }) {
     })
     .sort((a, b) => {
       const { key, dir } = ordenacao;
-      // Nulos sempre no final
       if (!a[key] && !b[key]) return 0;
       if (!a[key]) return 1;
       if (!b[key]) return -1;
@@ -127,7 +140,7 @@ export function Dashboard({ onLogout }) {
   const notificar = async (id) => {
     setNotificando(id);
     try {
-      const res = await api.alvaras.notificar(id);
+      await api.alvaras.notificar(id);
       addToast("Notificação enviada com sucesso!");
     } catch (e) {
       addToast(e.message, "error");
@@ -146,6 +159,33 @@ export function Dashboard({ onLogout }) {
     if (status === "AMARELO") return "bg-yellow-50 hover:bg-yellow-100/70";
     return "hover:bg-gray-50";
   };
+
+  // ── CSV Export ────────────────────────────────────────────────────────────
+  const exportarCSV = useCallback(() => {
+    const headers = ["Empresa", "CNPJ", "Tipo", "Protocolo", "Emissão", "Vencimento", "Dias", "Status", "Confiança IA (%)", "E-mail Contato"];
+    const rows = filtrados.map((a) => [
+      a.razao_social || "",
+      a.cnpj || "",
+      TIPO_LABELS[a.tipo] || a.tipo,
+      a.numero_protocolo || "",
+      a.data_emissao || "",
+      a.data_vencimento || "",
+      a.dias_para_vencer ?? "",
+      a.status_vencimento || "SEM_DATA",
+      a.confianca_extracao ?? "",
+      a.email_contato || "",
+    ]);
+    const csv = [headers, ...rows]
+      .map((r) => r.map((c) => `"${String(c).replace(/"/g, '""')}"`).join(","))
+      .join("\n");
+    const blob = new Blob(["\uFEFF" + csv], { type: "text/csv;charset=utf-8;" });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement("a");
+    link.href = url;
+    link.download = `alvaras_${new Date().toISOString().slice(0, 10)}.csv`;
+    link.click();
+    URL.revokeObjectURL(url);
+  }, [filtrados]);
 
   return (
     <div className="min-h-screen" style={{ backgroundColor: "#EADAB8" }}>
@@ -166,6 +206,7 @@ export function Dashboard({ onLogout }) {
           onSaved={recarregar}
         />
       )}
+
       {/* Header */}
       <header className="sticky top-0 z-10 shadow-md" style={{ backgroundColor: "#08332C" }}>
         <div className="w-full px-4 py-3 flex items-center justify-between">
@@ -227,7 +268,6 @@ export function Dashboard({ onLogout }) {
           {/* Upload */}
           <div className="lg:col-span-1 space-y-4">
             <section className="rounded-xl shadow-sm overflow-hidden" style={{ backgroundColor: "white", borderTop: "3px solid #0C483E" }}>
-              {/* Abas */}
               <div className="flex border-b" style={{ borderColor: "#EADAB8" }}>
                 {[{ key: "pdf", label: "Upload PDF" }, { key: "manual", label: "Cadastro Manual" }].map((aba) => (
                   <button
@@ -250,10 +290,9 @@ export function Dashboard({ onLogout }) {
               </div>
             </section>
 
-            {/* Painel de alertas */}
             {alvaras.length > 0 && (
               <section className="rounded-xl shadow-sm p-6" style={{ backgroundColor: "white", borderTop: "3px solid #C6B185" }}>
-                <AlertPanel alvaras={alvaras} />
+                <AlertPanel alvaras={alvaras} onResolvido={recarregar} />
               </section>
             )}
           </div>
@@ -263,52 +302,61 @@ export function Dashboard({ onLogout }) {
             <section className="rounded-xl shadow-sm overflow-hidden" style={{ backgroundColor: "white" }}>
               {/* Toolbar */}
               <div className="px-4 py-3 border-b flex flex-col gap-2" style={{ borderColor: "#EADAB8" }}>
-              {filtroStatus && (
-                <div className="flex items-center gap-2 text-xs">
-                  <span className="text-gray-500">Filtro ativo:</span>
-                  <span className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full font-semibold ${
-                    filtroStatus === "VERDE" ? "bg-green-100 text-green-700" :
-                    filtroStatus === "AMARELO" ? "bg-yellow-100 text-yellow-700" :
-                    filtroStatus === "VERMELHO" ? "bg-red-100 text-red-700" : "bg-gray-100 text-gray-600"
-                  }`}>
-                    {filtroStatus === "VERDE" ? "Em dia" : filtroStatus === "AMARELO" ? "Atenção" : filtroStatus === "VERMELHO" ? "Crítico" : "Sem data"}
-                    <button onClick={() => setFiltroStatus(null)} className="ml-1 hover:opacity-70" title="Remover filtro">✕</button>
-                  </span>
+                {filtroStatus && (
+                  <div className="flex items-center gap-2 text-xs">
+                    <span className="text-gray-500">Filtro ativo:</span>
+                    <span className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full font-semibold ${
+                      filtroStatus === "VERDE" ? "bg-green-100 text-green-700" :
+                      filtroStatus === "AMARELO" ? "bg-yellow-100 text-yellow-700" :
+                      filtroStatus === "VERMELHO" ? "bg-red-100 text-red-700" : "bg-gray-100 text-gray-600"
+                    }`}>
+                      {filtroStatus === "VERDE" ? "Em dia" : filtroStatus === "AMARELO" ? "Atenção" : filtroStatus === "VERMELHO" ? "Crítico" : "Sem data"}
+                      <button onClick={() => setFiltroStatus(null)} className="ml-1 hover:opacity-70">✕</button>
+                    </span>
+                  </div>
+                )}
+                <div className="flex flex-col sm:flex-row gap-2">
+                  <input
+                    type="text"
+                    placeholder="Buscar por empresa, CNPJ ou protocolo..."
+                    value={busca}
+                    onChange={(e) => setBusca(e.target.value)}
+                    className="flex-1 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2"
+                    style={{ border: "1px solid #C6B185" }}
+                  />
+                  <div className="flex items-center gap-2 flex-wrap">
+                    <Filter className="w-4 h-4" style={{ color: "#0C483E" }} />
+                    <select
+                      value={filtroTipo}
+                      onChange={(e) => setFiltroTipo(e.target.value)}
+                      className="rounded-lg px-3 py-2 text-sm focus:outline-none"
+                      style={{ border: "1px solid #C6B185", color: "#08332C" }}
+                    >
+                      {TIPOS.map((t) => (
+                        <option key={t.value} value={t.value}>{t.label}</option>
+                      ))}
+                    </select>
+                    <button
+                      onClick={() => setAgrupar((v) => !v)}
+                      title={agrupar ? "Desagrupar meses" : "Agrupar por mês"}
+                      className="px-3 py-2 rounded-lg text-xs font-medium transition-colors"
+                      style={agrupar
+                        ? { backgroundColor: "#EADAB8", color: "#08332C", border: "1px solid #C6B185" }
+                        : { backgroundColor: "white", color: "#0C483E", border: "1px solid #C6B185" }}
+                    >
+                      📅 Por mês
+                    </button>
+                    <button
+                      onClick={exportarCSV}
+                      title="Exportar para CSV"
+                      className="px-3 py-2 rounded-lg text-xs font-medium flex items-center gap-1.5 transition-colors hover:opacity-80"
+                      style={{ backgroundColor: "#08332C", color: "#C6B185", border: "1px solid #0C483E" }}
+                    >
+                      <Download className="w-3.5 h-3.5" />
+                      CSV
+                    </button>
+                  </div>
                 </div>
-              )}
-              <div className="flex flex-col sm:flex-row gap-2">
-                <input
-                  type="text"
-                  placeholder="Buscar por empresa, CNPJ ou protocolo..."
-                  value={busca}
-                  onChange={(e) => setBusca(e.target.value)}
-                  className="flex-1 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2"
-                  style={{ border: "1px solid #C6B185", focusRingColor: "#0C483E" }}
-                />
-                <div className="flex items-center gap-2">
-                  <Filter className="w-4 h-4" style={{ color: "#0C483E" }} />
-                  <select
-                    value={filtroTipo}
-                    onChange={(e) => setFiltroTipo(e.target.value)}
-                    className="rounded-lg px-3 py-2 text-sm focus:outline-none"
-                    style={{ border: "1px solid #C6B185", color: "#08332C" }}
-                  >
-                    {TIPOS.map((t) => (
-                      <option key={t.value} value={t.value}>{t.label}</option>
-                    ))}
-                  </select>
-                  <button
-                    onClick={() => setAgrupar((v) => !v)}
-                    title={agrupar ? "Desagrupar meses" : "Agrupar por mês"}
-                    className="px-3 py-2 rounded-lg text-xs font-medium transition-colors"
-                    style={agrupar
-                      ? { backgroundColor: "#EADAB8", color: "#08332C", border: "1px solid #C6B185" }
-                      : { backgroundColor: "white", color: "#0C483E", border: "1px solid #C6B185" }}
-                  >
-                    📅 Por mês
-                  </button>
-                </div>
-              </div>
               </div>
 
               {/* Tabela */}
@@ -360,25 +408,63 @@ export function Dashboard({ onLogout }) {
                               </span>
                             </td>
                           </tr>,
-                          ...grupo.map((alvara) => <LinhaAlvara key={alvara.id} alvara={alvara} formatarData={formatarData} corLinha={corLinhaPorStatus} deletando={deletando} onDeletar={deletar} onEditar={setEditando} notificando={notificando} onNotificar={notificar} />)
+                          ...grupo.map((alvara) => (
+                            <LinhaAlvara key={alvara.id} alvara={alvara} formatarData={formatarData}
+                              corLinha={corLinhaPorStatus} deletando={deletando} onDeletar={deletar}
+                              onEditar={setEditando} notificando={notificando} onNotificar={notificar} />
+                          ))
                         ])
-                      : filtrados.map((alvara) => <LinhaAlvara key={alvara.id} alvara={alvara} formatarData={formatarData} corLinha={corLinhaPorStatus} deletando={deletando} onDeletar={deletar} onEditar={setEditando} notificando={notificando} onNotificar={notificar} />)
+                      : filtrados.map((alvara) => (
+                          <LinhaAlvara key={alvara.id} alvara={alvara} formatarData={formatarData}
+                            corLinha={corLinhaPorStatus} deletando={deletando} onDeletar={deletar}
+                            onEditar={setEditando} notificando={notificando} onNotificar={notificar} />
+                        ))
                     )}
                   </tbody>
                 </table>
               </div>
 
-              {filtrados.length > 0 && (
-                <div className="px-6 py-3 border-t text-xs" style={{ color: "#0C483E", borderColor: "#EADAB8" }}>
-                  {filtrados.length} de {alvaras.length} alvará{alvaras.length !== 1 ? "s" : ""}
-                </div>
-              )}
+              {/* Footer: contagem + paginação */}
+              <div className="px-4 py-3 border-t flex items-center justify-between text-xs" style={{ color: "#0C483E", borderColor: "#EADAB8" }}>
+                <span>
+                  {filtrados.length} de {totalFiltrado} alvará{totalFiltrado !== 1 ? "s" : ""}
+                  {totalPaginas > 1 && ` — página ${paginaAtual} de ${totalPaginas}`}
+                </span>
+                {totalPaginas > 1 && (
+                  <div className="flex items-center gap-1">
+                    <button
+                      onClick={() => recarregar(paginaAtual - 1)}
+                      disabled={paginaAtual <= 1}
+                      className="p-1 rounded hover:bg-gray-100 disabled:opacity-30"
+                    >
+                      <ChevronLeft className="w-4 h-4" />
+                    </button>
+                    <span className="px-2">{paginaAtual}/{totalPaginas}</span>
+                    <button
+                      onClick={() => recarregar(paginaAtual + 1)}
+                      disabled={paginaAtual >= totalPaginas}
+                      className="p-1 rounded hover:bg-gray-100 disabled:opacity-30"
+                    >
+                      <ChevronRight className="w-4 h-4" />
+                    </button>
+                  </div>
+                )}
+              </div>
             </section>
           </div>
         </div>
       </main>
     </div>
   );
+}
+
+function ConfiancaBadge({ valor }) {
+  if (valor == null) return <span className="text-gray-300">—</span>;
+  const cor =
+    valor >= 80 ? "text-green-600" :
+    valor >= 50 ? "text-yellow-600" :
+                  "text-red-500";
+  return <span className={`font-semibold text-xs ${cor}`}>{valor}%</span>;
 }
 
 function LinhaAlvara({ alvara, formatarData, corLinha, deletando, onDeletar, onEditar, notificando, onNotificar }) {
@@ -413,6 +499,9 @@ function LinhaAlvara({ alvara, formatarData, corLinha, deletando, onDeletar, onE
           statusVencimento={alvara.status_vencimento}
           statusProcessamento={alvara.status_processamento}
         />
+      </td>
+      <td className="px-4 py-3">
+        <ConfiancaBadge valor={alvara.confianca_extracao} />
       </td>
       <td className="px-4 py-3 text-right">
         <div className="flex items-center justify-end gap-1">

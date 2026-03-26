@@ -15,6 +15,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.config import get_settings
 from app.database import get_db
 from app.models import Alvara, StatusProcessamento
+from app.routers.auth import get_current_user
 from app.schemas import AlvaraResponse, AlvaraUpdate, HistoricoAlertaResponse, UploadResponse
 from app.services.ai_extractor import extrair_dados_com_ia
 from app.services.document_processor import extrair_texto
@@ -41,6 +42,7 @@ def _get_max_size() -> int:
 async def upload_alvara(
     arquivo: UploadFile = File(...),
     db: AsyncSession = Depends(get_db),
+    _: str = Depends(get_current_user),
 ) -> UploadResponse:
     """
     Recebe um PDF ou imagem, extrai e processa os dados na mesma requisição.
@@ -56,7 +58,6 @@ async def upload_alvara(
 
     caminho = _salvar_arquivo(arquivo.filename, conteudo)
 
-    # Extrai e processa imediatamente (regex é rápido — sem dependência externa)
     try:
         from app.services.document_processor import extrair_texto
         from app.services.ai_extractor import extrair_dados_com_ia
@@ -104,6 +105,7 @@ async def upload_alvara(
 async def criar_alvara_manual(
     dados: AlvaraUpdate,
     db: AsyncSession = Depends(get_db),
+    _: str = Depends(get_current_user),
 ) -> AlvaraResponse:
     """Cria um alvará manualmente sem upload de arquivo."""
     alvara = Alvara(
@@ -115,6 +117,7 @@ async def criar_alvara_manual(
         numero_protocolo=dados.numero_protocolo,
         data_emissao=dados.data_emissao,
         data_vencimento=dados.data_vencimento,
+        email_contato=dados.email_contato,
         status_processamento=StatusProcessamento.CONCLUIDO,
     )
     db.add(alvara)
@@ -128,18 +131,42 @@ async def criar_alvara_manual(
 @router.get("/", response_model=list[AlvaraResponse])
 async def listar_alvaras(
     tipo: str | None = None,
+    busca: str | None = None,
+    status_venc: str | None = None,
     db: AsyncSession = Depends(get_db),
+    _: str = Depends(get_current_user),
 ) -> list[AlvaraResponse]:
     stmt = select(Alvara).order_by(Alvara.data_vencimento.asc().nullslast())
-    if tipo:
+    if tipo and tipo.upper() != "TODOS":
         stmt = stmt.where(Alvara.tipo == tipo.upper())
 
     alvaras = (await db.execute(stmt)).scalars().all()
+
+    # Filtros que dependem de propriedades calculadas (dias/status) — feitos em Python
+    if busca:
+        q = busca.lower()
+        alvaras = [
+            a for a in alvaras
+            if (a.razao_social or "").lower().__contains__(q)
+            or (a.cnpj or "").__contains__(q)
+            or (a.numero_protocolo or "").lower().__contains__(q)
+        ]
+    if status_venc and status_venc.upper() != "TODOS":
+        sv = status_venc.upper()
+        if sv == "SEM_DATA":
+            alvaras = [a for a in alvaras if a.data_vencimento is None]
+        else:
+            alvaras = [a for a in alvaras if a.status_vencimento and a.status_vencimento.value == sv]
+
     return [_to_response(a) for a in alvaras]
 
 
 @router.get("/{alvara_id}", response_model=AlvaraResponse)
-async def obter_alvara(alvara_id: int, db: AsyncSession = Depends(get_db)) -> AlvaraResponse:
+async def obter_alvara(
+    alvara_id: int,
+    db: AsyncSession = Depends(get_db),
+    _: str = Depends(get_current_user),
+) -> AlvaraResponse:
     alvara = await _get_or_404(alvara_id, db)
     return _to_response(alvara)
 
@@ -149,34 +176,53 @@ async def atualizar_alvara(
     alvara_id: int,
     dados: AlvaraUpdate,
     db: AsyncSession = Depends(get_db),
+    _: str = Depends(get_current_user),
 ) -> AlvaraResponse:
     alvara = await _get_or_404(alvara_id, db)
 
-    for campo, valor in dados.model_dump(exclude_unset=True).items():
+    # Se data_vencimento muda, reseta flags de alerta para reenvio futuro
+    campos = dados.model_dump(exclude_unset=True)
+    if "data_vencimento" in campos and campos["data_vencimento"] != alvara.data_vencimento:
+        alvara.alerta_enviado_amarelo = False
+        alvara.alerta_enviado_vermelho = False
+        alvara.alerta_resolvido = False
+        logger.info("Alvará %d: data_vencimento alterada — flags de alerta resetadas.", alvara_id)
+
+    for campo, valor in campos.items():
         setattr(alvara, campo, valor)
 
     return _to_response(alvara)
 
 
 @router.delete("/{alvara_id}", status_code=status.HTTP_204_NO_CONTENT)
-async def deletar_alvara(alvara_id: int, db: AsyncSession = Depends(get_db)) -> None:
+async def deletar_alvara(
+    alvara_id: int,
+    db: AsyncSession = Depends(get_db),
+    _: str = Depends(get_current_user),
+) -> None:
     alvara = await _get_or_404(alvara_id, db)
     await db.delete(alvara)
 
 
 @router.get("/{alvara_id}/alertas", response_model=list[HistoricoAlertaResponse])
 async def listar_alertas_alvara(
-    alvara_id: int, db: AsyncSession = Depends(get_db)
+    alvara_id: int,
+    db: AsyncSession = Depends(get_db),
+    _: str = Depends(get_current_user),
 ) -> list[HistoricoAlertaResponse]:
     alvara = await _get_or_404(alvara_id, db)
     return alvara.alertas
 
 
 @router.post("/{alvara_id}/notificar")
-async def notificar_alvara(alvara_id: int, db: AsyncSession = Depends(get_db)) -> dict:
+async def notificar_alvara(
+    alvara_id: int,
+    db: AsyncSession = Depends(get_db),
+    _: str = Depends(get_current_user),
+) -> dict:
     """Dispara uma notificação manual para o alvará informado."""
     from app.models import HistoricoAlerta
-    from app.services.alert_service import _montar_mensagem_alerta, _simular_envio_email
+    from app.services.alert_service import _montar_mensagem_alerta, enviar_email_alerta
 
     alvara = await _get_or_404(alvara_id, db)
 
@@ -193,9 +239,22 @@ async def notificar_alvara(alvara_id: int, db: AsyncSession = Depends(get_db)) -
         mensagem=mensagem,
     )
     db.add(historico)
-    _simular_envio_email(alvara, mensagem)
+    await enviar_email_alerta(alvara, mensagem)
 
     return {"sucesso": True, "mensagem": mensagem}
+
+
+@router.post("/{alvara_id}/resolver-alerta")
+async def resolver_alerta(
+    alvara_id: int,
+    db: AsyncSession = Depends(get_db),
+    _: str = Depends(get_current_user),
+) -> dict:
+    """Marca o alerta deste alvará como resolvido/reconhecido."""
+    alvara = await _get_or_404(alvara_id, db)
+    alvara.alerta_resolvido = True
+    logger.info("Alvará %d: alerta marcado como resolvido.", alvara_id)
+    return {"sucesso": True, "id": alvara_id}
 
 
 # ── Helpers ───────────────────────────────────────────────────────────────────
@@ -274,9 +333,9 @@ def _to_response(alvara: Alvara) -> AlvaraResponse:
             col: getattr(alvara, col)
             for col in [
                 "id", "razao_social", "cnpj", "tipo", "numero_protocolo",
-                "data_emissao", "data_vencimento", "nome_arquivo",
+                "data_emissao", "data_vencimento", "email_contato", "nome_arquivo",
                 "status_processamento", "erro_processamento", "confianca_extracao",
-                "alerta_enviado_amarelo", "alerta_enviado_vermelho",
+                "alerta_enviado_amarelo", "alerta_enviado_vermelho", "alerta_resolvido",
                 "criado_em", "atualizado_em",
             ]
         },

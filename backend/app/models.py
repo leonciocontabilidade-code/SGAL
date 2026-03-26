@@ -47,6 +47,9 @@ class Alvara(Base):
     data_emissao: Mapped[Optional[date]] = mapped_column(Date, nullable=True)
     data_vencimento: Mapped[Optional[date]] = mapped_column(Date, nullable=True, index=True)
 
+    # Contato para alertas
+    email_contato: Mapped[Optional[str]] = mapped_column(String(255), nullable=True)
+
     # Controle do arquivo
     nome_arquivo: Mapped[str] = mapped_column(String(255), nullable=False)
     caminho_arquivo: Mapped[str] = mapped_column(Text, nullable=False)
@@ -64,6 +67,9 @@ class Alvara(Base):
     # Alertas
     alerta_enviado_amarelo: Mapped[bool] = mapped_column(Boolean, default=False)
     alerta_enviado_vermelho: Mapped[bool] = mapped_column(Boolean, default=False)
+
+    # Alerta resolvido/reconhecido pelo operador
+    alerta_resolvido: Mapped[bool] = mapped_column(Boolean, default=False)
 
     # Metadados
     criado_em: Mapped[datetime] = mapped_column(

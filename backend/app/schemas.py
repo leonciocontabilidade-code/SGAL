@@ -39,6 +39,7 @@ class AlvaraBase(BaseModel):
     numero_protocolo: Optional[str] = None
     data_emissao: Optional[date] = None
     data_vencimento: Optional[date] = None
+    email_contato: Optional[str] = None
 
 
 class AlvaraCreate(AlvaraBase):
@@ -53,6 +54,8 @@ class AlvaraUpdate(BaseModel):
     numero_protocolo: Optional[str] = None
     data_emissao: Optional[date] = None
     data_vencimento: Optional[date] = None
+    email_contato: Optional[str] = None
+    alerta_resolvido: Optional[bool] = None
 
 
 class AlvaraResponse(AlvaraBase):
@@ -63,6 +66,7 @@ class AlvaraResponse(AlvaraBase):
     confianca_extracao: Optional[int] = None
     alerta_enviado_amarelo: bool
     alerta_enviado_vermelho: bool
+    alerta_resolvido: bool
     criado_em: datetime
     atualizado_em: datetime
 
@@ -96,6 +100,9 @@ class DashboardStats(BaseModel):
 class DashboardResponse(BaseModel):
     stats: DashboardStats
     alvaras: list[AlvaraResponse]
+    total_filtrado: int = 0
+    pagina: int = 1
+    total_paginas: int = 1
 
 
 # ── Alertas ───────────────────────────────────────────────────────────────────

@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { Search, Loader2, CheckCircle, Save, X } from "lucide-react";
+import { Search, Loader2, CheckCircle, Save, X, Mail } from "lucide-react";
 import { api } from "../services/api";
 
 const TIPOS = [
@@ -26,6 +26,7 @@ export function NovoAlvaraManual({ onSalvo }) {
   const [form, setForm] = useState({
     cnpj: "", razao_social: "", tipo: "DESCONHECIDO",
     numero_protocolo: "", data_emissao: "", data_vencimento: "",
+    email_contato: "",
   });
   const [buscando, setBuscando] = useState(false);
   const [cnpjOk, setCnpjOk] = useState(false);
@@ -62,7 +63,7 @@ export function NovoAlvaraManual({ onSalvo }) {
   };
 
   const limpar = () => {
-    setForm({ cnpj: "", razao_social: "", tipo: "DESCONHECIDO", numero_protocolo: "", data_emissao: "", data_vencimento: "" });
+    setForm({ cnpj: "", razao_social: "", tipo: "DESCONHECIDO", numero_protocolo: "", data_emissao: "", data_vencimento: "", email_contato: "" });
     setCnpjOk(false); setErroCNPJ(null); setErro(null);
   };
 
@@ -76,6 +77,7 @@ export function NovoAlvaraManual({ onSalvo }) {
       if (form.numero_protocolo) payload.numero_protocolo = form.numero_protocolo;
       if (form.data_emissao) payload.data_emissao = form.data_emissao;
       if (form.data_vencimento) payload.data_vencimento = form.data_vencimento;
+      if (form.email_contato) payload.email_contato = form.email_contato;
       await api.alvaras.criar(payload);
       limpar();
       onSalvo?.();
@@ -145,6 +147,20 @@ export function NovoAlvaraManual({ onSalvo }) {
           <label className={labelStyle} style={{ color: "#0C483E" }}>Vencimento</label>
           <input type="date" value={form.data_vencimento} onChange={set("data_vencimento")} className={inputStyle} />
         </div>
+      </div>
+
+      {/* E-mail contato */}
+      <div>
+        <label className={labelStyle} style={{ color: "#0C483E" }}>
+          <Mail className="w-3 h-3 inline mr-1" />E-mail para alertas
+        </label>
+        <input
+          type="email"
+          value={form.email_contato}
+          onChange={set("email_contato")}
+          placeholder="responsavel@empresa.com.br"
+          className={inputStyle}
+        />
       </div>
 
       {erro && <p className="text-xs text-red-600 bg-red-50 border border-red-200 rounded px-3 py-2">{erro}</p>}

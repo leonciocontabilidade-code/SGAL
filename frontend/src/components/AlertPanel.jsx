@@ -1,8 +1,20 @@
-import { AlertTriangle, XCircle, Bell } from "lucide-react";
+import { useState } from "react";
+import { AlertTriangle, XCircle, Bell, CheckCircle2 } from "lucide-react";
+import { api } from "../services/api";
 
-export function AlertPanel({ alvaras }) {
+const TIPO_LABELS = {
+  SANITARIO: "Alvará Sanitário",
+  BOMBEIROS: "Certificado do Bombeiros",
+  FUNCIONAMENTO: "Alvará de Localização e Funcionamento",
+  AMA: "Alvará Ambiental",
+  DESCONHECIDO: "Desconhecido",
+};
+
+export function AlertPanel({ alvaras, onResolvido }) {
   const criticos = alvaras.filter(
-    (a) => a.status_vencimento === "VERMELHO" || a.status_vencimento === "AMARELO"
+    (a) =>
+      (a.status_vencimento === "VERMELHO" || a.status_vencimento === "AMARELO") &&
+      !a.alerta_resolvido
   );
 
   if (criticos.length === 0) return null;
@@ -20,18 +32,19 @@ export function AlertPanel({ alvaras }) {
       </div>
 
       {vermelhos.map((a) => (
-        <AlertItem key={a.id} alvara={a} tipo="VERMELHO" />
+        <AlertItem key={a.id} alvara={a} tipo="VERMELHO" onResolvido={onResolvido} />
       ))}
       {amarelos.map((a) => (
-        <AlertItem key={a.id} alvara={a} tipo="AMARELO" />
+        <AlertItem key={a.id} alvara={a} tipo="AMARELO" onResolvido={onResolvido} />
       ))}
     </div>
   );
 }
 
-function AlertItem({ alvara, tipo }) {
+function AlertItem({ alvara, tipo, onResolvido }) {
   const isVermelho = tipo === "VERMELHO";
   const dias = alvara.dias_para_vencer;
+  const [resolvendo, setResolvendo] = useState(false);
 
   const textoSituacao =
     dias === null
@@ -39,6 +52,20 @@ function AlertItem({ alvara, tipo }) {
       : dias < 0
       ? `Vencido há ${Math.abs(dias)} dia${Math.abs(dias) !== 1 ? "s" : ""}`
       : `Vence em ${dias} dia${dias !== 1 ? "s" : ""}`;
+
+  const tipoLabel = TIPO_LABELS[alvara.tipo] || alvara.tipo;
+
+  const marcarResolvido = async () => {
+    setResolvendo(true);
+    try {
+      await api.alvaras.resolverAlerta(alvara.id);
+      onResolvido?.();
+    } catch {
+      // silencioso — o dashboard vai recarregar em 5 min de qualquer forma
+    } finally {
+      setResolvendo(false);
+    }
+  };
 
   return (
     <div
@@ -58,19 +85,33 @@ function AlertItem({ alvara, tipo }) {
           {alvara.razao_social || "Empresa não identificada"}
         </p>
         <p className={`text-xs mt-0.5 ${isVermelho ? "text-red-600" : "text-yellow-600"}`}>
-          {alvara.tipo} • {textoSituacao}
+          {tipoLabel} • {textoSituacao}
         </p>
         {alvara.cnpj && (
           <p className="text-xs text-gray-400 mt-0.5">{alvara.cnpj}</p>
         )}
+        {alvara.email_contato && (
+          <p className="text-xs text-gray-400 mt-0.5">📧 {alvara.email_contato}</p>
+        )}
       </div>
-      <span
-        className={`shrink-0 text-xs font-bold px-2 py-0.5 rounded-full ${
-          isVermelho ? "bg-red-100 text-red-700" : "bg-yellow-100 text-yellow-700"
-        }`}
-      >
-        {isVermelho ? "CRÍTICO" : "ATENÇÃO"}
-      </span>
+      <div className="flex flex-col items-end gap-1.5 shrink-0">
+        <span
+          className={`text-xs font-bold px-2 py-0.5 rounded-full ${
+            isVermelho ? "bg-red-100 text-red-700" : "bg-yellow-100 text-yellow-700"
+          }`}
+        >
+          {isVermelho ? "CRÍTICO" : "ATENÇÃO"}
+        </span>
+        <button
+          onClick={marcarResolvido}
+          disabled={resolvendo}
+          title="Marcar como resolvido"
+          className="flex items-center gap-1 text-xs text-gray-400 hover:text-green-600 transition-colors disabled:opacity-50"
+        >
+          <CheckCircle2 className="w-3.5 h-3.5" />
+          {resolvendo ? "..." : "Resolvido"}
+        </button>
+      </div>
     </div>
   );
 }

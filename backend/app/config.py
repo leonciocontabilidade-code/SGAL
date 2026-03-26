@@ -1,3 +1,4 @@
+from functools import lru_cache
 from pydantic_settings import BaseSettings
 from pathlib import Path
 
@@ -27,13 +28,25 @@ class Settings(BaseSettings):
     debug: bool = False
     app_password: str = "sgal2024"
 
+    # JWT — troque jwt_secret em produção (.env)
+    jwt_secret: str = "sgal-jwt-secret-change-in-production-use-env"
+    jwt_expire_hours: int = 8
+
+    # SMTP — configure no .env para envios reais
+    smtp_host: str = ""
+    smtp_port: int = 587
+    smtp_user: str = ""
+    smtp_password: str = ""
+    smtp_from: str = ""
+    smtp_tls: bool = True
+
     model_config = {
         "env_file": str(_ENV_FILE),
         "env_file_encoding": "utf-8",
-        "env_ignore_empty": True,   # ignora variáveis de ambiente vazias, usa o .env
+        "env_ignore_empty": True,
     }
 
 
+@lru_cache()
 def get_settings() -> Settings:
-    # Sem cache — lê o .env a cada chamada para não travar a chave de API
     return Settings()

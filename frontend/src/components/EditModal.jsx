@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { X, Save, Loader2, Search, CheckCircle } from "lucide-react";
+import { X, Save, Loader2, Search, CheckCircle, Mail } from "lucide-react";
 import { api } from "../services/api";
 
 const TIPOS = [
@@ -19,6 +19,19 @@ function formatarCNPJ(valor) {
     .replace(/(\d{4})(\d)/, "$1-$2");
 }
 
+function ConfiancaBadge({ valor }) {
+  if (valor == null) return null;
+  const cor =
+    valor >= 80 ? "bg-green-100 text-green-700" :
+    valor >= 50 ? "bg-yellow-100 text-yellow-700" :
+                  "bg-red-100 text-red-700";
+  return (
+    <span className={`inline-flex items-center gap-1 text-xs font-semibold px-2 py-0.5 rounded-full ${cor}`}>
+      🤖 IA: {valor}%
+    </span>
+  );
+}
+
 export function EditModal({ alvara, onClose, onSaved }) {
   const [form, setForm] = useState({
     razao_social: alvara.razao_social || "",
@@ -27,6 +40,7 @@ export function EditModal({ alvara, onClose, onSaved }) {
     numero_protocolo: alvara.numero_protocolo || "",
     data_emissao: alvara.data_emissao || "",
     data_vencimento: alvara.data_vencimento || "",
+    email_contato: alvara.email_contato || "",
   });
   const [salvando, setSalvando] = useState(false);
   const [erro, setErro] = useState(null);
@@ -86,6 +100,7 @@ export function EditModal({ alvara, onClose, onSaved }) {
       if (form.numero_protocolo) payload.numero_protocolo = form.numero_protocolo;
       if (form.data_emissao) payload.data_emissao = form.data_emissao;
       if (form.data_vencimento) payload.data_vencimento = form.data_vencimento;
+      payload.email_contato = form.email_contato || null;
 
       await api.alvaras.atualizar(alvara.id, payload);
       onSaved();
@@ -102,11 +117,14 @@ export function EditModal({ alvara, onClose, onSaved }) {
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm p-4">
-      <div className="bg-white rounded-2xl shadow-2xl w-full max-w-xl">
+      <div className="bg-white rounded-2xl shadow-2xl w-full max-w-xl max-h-[90vh] overflow-y-auto">
         {/* Header */}
-        <div className="flex items-center justify-between px-6 py-4 border-b" style={{ borderColor: "#EADAB8" }}>
+        <div className="flex items-center justify-between px-6 py-4 border-b sticky top-0 bg-white z-10" style={{ borderColor: "#EADAB8" }}>
           <div>
-            <h2 className="text-base font-bold" style={{ color: "#08332C" }}>Editar Alvará</h2>
+            <div className="flex items-center gap-2">
+              <h2 className="text-base font-bold" style={{ color: "#08332C" }}>Editar Alvará</h2>
+              <ConfiancaBadge valor={alvara.confianca_extracao} />
+            </div>
             <p className="text-xs text-gray-400 mt-0.5 truncate max-w-[340px]">{alvara.nome_arquivo}</p>
           </div>
           <button onClick={onClose} className="p-2 rounded-lg hover:bg-gray-100 text-gray-400 hover:text-gray-600">
@@ -163,11 +181,7 @@ export function EditModal({ alvara, onClose, onSaved }) {
           {/* Tipo */}
           <div>
             <label className={labelStyle} style={{ color: "#0C483E" }}>Tipo de Alvará</label>
-            <select
-              value={form.tipo}
-              onChange={set("tipo")}
-              className={inputStyle}
-            >
+            <select value={form.tipo} onChange={set("tipo")} className={inputStyle}>
               {TIPOS.map((t) => (
                 <option key={t.value} value={t.value}>{t.label}</option>
               ))}
@@ -198,13 +212,29 @@ export function EditModal({ alvara, onClose, onSaved }) {
             </div>
           </div>
 
+          {/* E-mail de contato para alertas */}
+          <div>
+            <label className={labelStyle} style={{ color: "#0C483E" }}>
+              <Mail className="w-3.5 h-3.5 inline mr-1" />
+              E-mail para alertas
+            </label>
+            <input
+              type="email"
+              value={form.email_contato}
+              onChange={set("email_contato")}
+              placeholder="responsavel@empresa.com.br"
+              className={inputStyle}
+            />
+            <p className="text-xs text-gray-400 mt-1">Usado para envio automático de alertas de vencimento.</p>
+          </div>
+
           {erro && (
             <p className="text-sm text-red-600 bg-red-50 border border-red-200 rounded-lg px-3 py-2">{erro}</p>
           )}
         </div>
 
         {/* Footer */}
-        <div className="px-6 py-4 border-t flex justify-end gap-3" style={{ borderColor: "#EADAB8" }}>
+        <div className="px-6 py-4 border-t flex justify-end gap-3 sticky bottom-0 bg-white" style={{ borderColor: "#EADAB8" }}>
           <button
             onClick={onClose}
             className="px-4 py-2 rounded-lg border text-sm text-gray-600 hover:bg-gray-50"

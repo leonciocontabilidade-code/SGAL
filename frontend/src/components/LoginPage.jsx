@@ -19,11 +19,12 @@ export function LoginPage({ onLogin }) {
         body: JSON.stringify({ senha }),
       });
       const data = await res.json();
-      if (res.ok && data.ok) {
+      if (res.ok && data.ok && data.token) {
+        sessionStorage.setItem("sgal_token", data.token);
         sessionStorage.setItem("sgal_auth", "1");
         onLogin();
       } else {
-        setErro("Senha incorreta.");
+        setErro(data.detail || "Senha incorreta.");
       }
     } catch {
       setErro("Erro ao conectar com o servidor.");
