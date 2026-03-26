@@ -45,6 +45,28 @@ async def get_db() -> AsyncSession:
             await session.close()
 
 
+async def _run_migrations(conn) -> None:
+    """Adiciona colunas novas sem apagar dados existentes (safe migration)."""
+    from sqlalchemy import text
+
+    if _is_sqlite:
+        result = await conn.execute(text("PRAGMA table_info(alvaras)"))
+        cols = {row[1] for row in result.fetchall()}
+        if "email_contato" not in cols:
+            await conn.execute(text("ALTER TABLE alvaras ADD COLUMN email_contato VARCHAR(255)"))
+        if "alerta_resolvido" not in cols:
+            await conn.execute(text("ALTER TABLE alvaras ADD COLUMN alerta_resolvido BOOLEAN NOT NULL DEFAULT 0"))
+    else:
+        # PostgreSQL suporta IF NOT EXISTS
+        await conn.execute(text(
+            "ALTER TABLE alvaras ADD COLUMN IF NOT EXISTS email_contato VARCHAR(255)"
+        ))
+        await conn.execute(text(
+            "ALTER TABLE alvaras ADD COLUMN IF NOT EXISTS alerta_resolvido BOOLEAN NOT NULL DEFAULT FALSE"
+        ))
+
+
 async def init_db() -> None:
     async with engine.begin() as conn:
         await conn.run_sync(Base.metadata.create_all)
+        await _run_migrations(conn)
