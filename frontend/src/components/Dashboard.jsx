@@ -56,6 +56,7 @@ function agruparPorMes(lista) {
 export function Dashboard({ onLogout }) {
   const { data, loading, error, recarregar } = useDashboard();
   const [filtroTipo, setFiltroTipo] = useState("TODOS");
+  const [filtroStatus, setFiltroStatus] = useState(null); // null | "VERDE" | "AMARELO" | "VERMELHO" | "SEM_DATA"
   const [busca, setBusca] = useState("");
   const [ordenacao, setOrdenacao] = useState({ key: "data_vencimento", dir: "asc" });
   const [agrupar, setAgrupar] = useState(true);
@@ -68,9 +69,16 @@ export function Dashboard({ onLogout }) {
   const alvaras = data?.alvaras ?? [];
   const stats = data?.stats;
 
+  const toggleFiltroStatus = (status) =>
+    setFiltroStatus((prev) => (prev === status ? null : status));
+
   const filtrados = alvaras
     .filter((a) => filtroTipo === "TODOS" || a.tipo === filtroTipo)
-
+    .filter((a) => {
+      if (!filtroStatus) return true;
+      if (filtroStatus === "SEM_DATA") return !a.data_vencimento;
+      return a.status_vencimento === filtroStatus;
+    })
     .filter((a) => {
       if (!busca) return true;
       const q = busca.toLowerCase();
@@ -204,10 +212,14 @@ export function Dashboard({ onLogout }) {
         {stats && (
           <div className="grid grid-cols-2 md:grid-cols-5 gap-3">
             <StatsCard label="Total" valor={stats.total} cor="azul" icone={FileText} />
-            <StatsCard label="Em dia" valor={stats.verdes} cor="verde" icone={CheckCircle} sublabel="> 60 dias" />
-            <StatsCard label="Atenção" valor={stats.amarelos} cor="amarelo" icone={AlertTriangle} sublabel="15–60 dias" />
-            <StatsCard label="Crítico" valor={stats.vermelhos} cor="vermelho" icone={XCircle} sublabel="< 15 dias / vencido" />
-            <StatsCard label="Sem data" valor={stats.sem_vencimento} cor="cinza" icone={HelpCircle} />
+            <StatsCard label="Em dia" valor={stats.verdes} cor="verde" icone={CheckCircle} sublabel="> 60 dias"
+              onClick={() => toggleFiltroStatus("VERDE")} ativo={filtroStatus === "VERDE"} />
+            <StatsCard label="Atenção" valor={stats.amarelos} cor="amarelo" icone={AlertTriangle} sublabel="15–60 dias"
+              onClick={() => toggleFiltroStatus("AMARELO")} ativo={filtroStatus === "AMARELO"} />
+            <StatsCard label="Crítico" valor={stats.vermelhos} cor="vermelho" icone={XCircle} sublabel="< 15 dias / vencido"
+              onClick={() => toggleFiltroStatus("VERMELHO")} ativo={filtroStatus === "VERMELHO"} />
+            <StatsCard label="Sem data" valor={stats.sem_vencimento} cor="cinza" icone={HelpCircle}
+              onClick={() => toggleFiltroStatus("SEM_DATA")} ativo={filtroStatus === "SEM_DATA"} />
           </div>
         )}
 
@@ -250,7 +262,21 @@ export function Dashboard({ onLogout }) {
           <div className="lg:col-span-3">
             <section className="rounded-xl shadow-sm overflow-hidden" style={{ backgroundColor: "white" }}>
               {/* Toolbar */}
-              <div className="px-4 py-3 border-b flex flex-col sm:flex-row gap-2" style={{ borderColor: "#EADAB8" }}>
+              <div className="px-4 py-3 border-b flex flex-col gap-2" style={{ borderColor: "#EADAB8" }}>
+              {filtroStatus && (
+                <div className="flex items-center gap-2 text-xs">
+                  <span className="text-gray-500">Filtro ativo:</span>
+                  <span className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full font-semibold ${
+                    filtroStatus === "VERDE" ? "bg-green-100 text-green-700" :
+                    filtroStatus === "AMARELO" ? "bg-yellow-100 text-yellow-700" :
+                    filtroStatus === "VERMELHO" ? "bg-red-100 text-red-700" : "bg-gray-100 text-gray-600"
+                  }`}>
+                    {filtroStatus === "VERDE" ? "Em dia" : filtroStatus === "AMARELO" ? "Atenção" : filtroStatus === "VERMELHO" ? "Crítico" : "Sem data"}
+                    <button onClick={() => setFiltroStatus(null)} className="ml-1 hover:opacity-70" title="Remover filtro">✕</button>
+                  </span>
+                </div>
+              )}
+              <div className="flex flex-col sm:flex-row gap-2">
                 <input
                   type="text"
                   placeholder="Buscar por empresa, CNPJ ou protocolo..."
@@ -282,6 +308,7 @@ export function Dashboard({ onLogout }) {
                     📅 Por mês
                   </button>
                 </div>
+              </div>
               </div>
 
               {/* Tabela */}
