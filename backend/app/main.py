@@ -10,7 +10,7 @@ from fastapi.staticfiles import StaticFiles
 
 from app.config import get_settings
 from app.database import init_db
-from app.routers import alvaras, dashboard, auth
+from app.routers import alvaras, dashboard, auth, admin
 from app.tasks.deadline_checker import iniciar_verificador_prazos
 
 logging.basicConfig(
@@ -31,7 +31,14 @@ async def lifespan(app: FastAPI):
     # Garante que o diretório do banco existe (Railway volume / local)
     if settings.database_url.startswith("sqlite"):
         db_path = settings.database_url.split("///")[-1]
-        Path(db_path).parent.mkdir(parents=True, exist_ok=True)
+        db_dir = Path(db_path).parent
+        db_dir.mkdir(parents=True, exist_ok=True)
+        volume_ativo = str(db_dir.resolve()).startswith("/data")
+        logger.info(
+            "Banco de dados: %s | Volume persistente: %s",
+            db_path,
+            "SIM ✓" if volume_ativo else "NÃO (dados serão perdidos no próximo deploy!)",
+        )
     await init_db()
     Path(settings.upload_dir).mkdir(parents=True, exist_ok=True)
     task = asyncio.create_task(iniciar_verificador_prazos())
@@ -64,6 +71,7 @@ app.add_middleware(
 app.include_router(alvaras.router, prefix="/api/v1")
 app.include_router(dashboard.router, prefix="/api/v1")
 app.include_router(auth.router, prefix="/api")
+app.include_router(admin.router, prefix="/api")
 
 
 @app.get("/health")

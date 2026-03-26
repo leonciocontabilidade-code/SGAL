@@ -187,6 +187,22 @@ export function Dashboard({ onLogout }) {
     URL.revokeObjectURL(url);
   }, [filtrados]);
 
+  // ── Backup do banco ────────────────────────────────────────────────────────
+  const baixarBackup = useCallback(async () => {
+    const token = sessionStorage.getItem("sgal_token");
+    const res = await fetch("/api/admin/backup", {
+      headers: token ? { Authorization: `Bearer ${token}` } : {},
+    });
+    if (!res.ok) return;
+    const blob = await res.blob();
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement("a");
+    link.href = url;
+    link.download = `sgal_backup_${new Date().toISOString().slice(0, 10)}.db`;
+    link.click();
+    URL.revokeObjectURL(url);
+  }, []);
+
   return (
     <div className="min-h-screen" style={{ backgroundColor: "#EADAB8" }}>
       {/* Toasts */}
@@ -354,6 +370,15 @@ export function Dashboard({ onLogout }) {
                     >
                       <Download className="w-3.5 h-3.5" />
                       CSV
+                    </button>
+                    <button
+                      onClick={baixarBackup}
+                      title="Baixar backup do banco de dados"
+                      className="px-3 py-2 rounded-lg text-xs font-medium flex items-center gap-1.5 transition-colors hover:opacity-80"
+                      style={{ backgroundColor: "#5a3e1b", color: "#EADAB8", border: "1px solid #8a6030" }}
+                    >
+                      <Download className="w-3.5 h-3.5" />
+                      Backup
                     </button>
                   </div>
                 </div>
