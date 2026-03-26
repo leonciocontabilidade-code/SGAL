@@ -1,3 +1,4 @@
+import os
 from functools import lru_cache
 from pydantic_settings import BaseSettings
 from pathlib import Path
@@ -5,10 +6,17 @@ from pathlib import Path
 # Caminho absoluto do .env — funciona independente do diretório de execução
 _ENV_FILE = Path(__file__).resolve().parent.parent / ".env"
 
+# Em produção no Railway, usa o volume persistente em /data
+_DEFAULT_DB = (
+    "sqlite+aiosqlite:////data/sgal.db"
+    if os.getenv("RAILWAY_ENVIRONMENT")
+    else "sqlite+aiosqlite:///./sgal.db"
+)
+
 
 class Settings(BaseSettings):
     # Database (SQLite por padrão — sem instalação extra)
-    database_url: str = "sqlite+aiosqlite:///./sgal.db"
+    database_url: str = _DEFAULT_DB
 
     # AI Provider (supports "anthropic" or "openai")
     ai_provider: str = "anthropic"

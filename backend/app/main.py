@@ -28,6 +28,10 @@ _FRONTEND_DIST = _HERE.parent.parent / "frontend" / "dist"
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     logger.info("Iniciando %s...", settings.app_name)
+    # Garante que o diretório do banco existe (Railway volume / local)
+    if settings.database_url.startswith("sqlite"):
+        db_path = settings.database_url.split("///")[-1]
+        Path(db_path).parent.mkdir(parents=True, exist_ok=True)
     await init_db()
     Path(settings.upload_dir).mkdir(parents=True, exist_ok=True)
     task = asyncio.create_task(iniciar_verificador_prazos())

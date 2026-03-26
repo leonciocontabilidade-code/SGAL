@@ -1,0 +1,6 @@
+[deploy]
+numReplicas = 1
+
+[[volumes]]
+name = "sgal-data"
+mountPath = "/data"
