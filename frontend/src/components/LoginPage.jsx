@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { FileText, Lock } from "lucide-react";
+import { Lock } from "lucide-react";
 
 const API_BASE = import.meta.env.VITE_API_URL || "";
 
@@ -38,11 +38,13 @@ export function LoginPage({ onLogin }) {
       <div className="w-full max-w-sm">
         {/* Logo */}
         <div className="text-center mb-8">
-          <div className="inline-flex items-center justify-center w-16 h-16 rounded-2xl mb-4" style={{ backgroundColor: "#08332C" }}>
-            <FileText className="w-8 h-8" style={{ color: "#C6B185" }} />
-          </div>
-          <h1 className="text-2xl font-bold" style={{ color: "#08332C" }}>SGAL</h1>
-          <p className="text-sm mt-1" style={{ color: "#0C483E" }}>Sistema de Gestão de Alvarás e Licenças</p>
+          <img
+            src="/logo-leoncio.png"
+            alt="Leoncio Assessoria Empresarial"
+            className="mx-auto mb-4"
+            style={{ height: "120px", objectFit: "contain" }}
+          />
+          <p className="text-sm font-medium mt-1" style={{ color: "#0C483E" }}>Sistema de Gestão de Alvarás e Licenças</p>
         </div>
 
         {/* Card */}

@@ -227,13 +227,14 @@ export function Dashboard({ onLogout }) {
       <header className="sticky top-0 z-10 shadow-md" style={{ backgroundColor: "#08332C" }}>
         <div className="w-full px-4 py-3 flex items-center justify-between">
           <div className="flex items-center gap-3">
-            <div className="p-2 rounded-lg" style={{ backgroundColor: "#0C483E" }}>
-              <FileText className="w-6 h-6" style={{ color: "#C6B185" }} />
+            <div className="rounded-lg px-2 py-1" style={{ backgroundColor: "#EADAB8" }}>
+              <img
+                src="/logo-leoncio.png"
+                alt="Leoncio Assessoria Empresarial"
+                style={{ height: "38px", objectFit: "contain" }}
+              />
             </div>
-            <div>
-              <h1 className="text-lg font-bold" style={{ color: "#C6B185" }}>SGAL</h1>
-              <p className="text-xs" style={{ color: "#EADAB8", opacity: 0.7 }}>Gestão de Alvarás e Licenças</p>
-            </div>
+            <p className="text-xs hidden sm:block" style={{ color: "#EADAB8", opacity: 0.7 }}>Gestão de Alvarás e Licenças</p>
           </div>
           <div className="flex items-center gap-4">
             <button
