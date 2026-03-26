@@ -34,22 +34,26 @@ export function LoginPage({ onLogin }) {
   };
 
   return (
-    <div className="min-h-screen flex items-center justify-center" style={{ backgroundColor: "#EADAB8" }}>
-      <div className="w-full max-w-sm">
-        {/* Logo */}
-        <div className="text-center mb-8">
-          <div className="mx-auto mb-4 rounded-2xl shadow-lg overflow-hidden inline-block" style={{ backgroundColor: "white", padding: "16px 24px" }}>
-            <img
-              src="/logo-leoncio.png"
-              alt="Leoncio Assessoria Empresarial"
-              style={{ height: "110px", objectFit: "contain", display: "block" }}
-            />
-          </div>
-          <p className="text-sm font-medium mt-1" style={{ color: "#0C483E" }}>Sistema de Gestão de Alvarás e Licenças</p>
+    <div className="min-h-screen flex items-center justify-center" style={{ backgroundColor: "#08332C" }}>
+      <div className="w-full max-w-sm shadow-2xl rounded-3xl overflow-hidden">
+
+        {/* Topo — Logo preenche toda a área bege */}
+        <div style={{ backgroundColor: "#EADAB8", position: "relative" }}>
+          <img
+            src="/logo-leoncio.png"
+            alt="Leoncio Assessoria Empresarial"
+            style={{ width: "100%", display: "block", objectFit: "cover", objectPosition: "center", maxHeight: "260px" }}
+          />
+          <p className="text-xs font-semibold tracking-widest uppercase text-center py-3" style={{ color: "#0C483E" }}>
+            Sistema de Gestão de Alvarás
+          </p>
         </div>
 
-        {/* Card */}
-        <div className="rounded-2xl shadow-lg p-8" style={{ backgroundColor: "#08332C" }}>
+        {/* Divisor dourado */}
+        <div style={{ height: "4px", backgroundColor: "#C6B185" }} />
+
+        {/* Baixo — Formulário sobre fundo verde escuro */}
+        <div className="px-8 py-8" style={{ backgroundColor: "#08332C" }}>
           <div className="flex items-center gap-2 mb-6">
             <Lock className="w-4 h-4" style={{ color: "#C6B185" }} />
             <span className="text-sm font-semibold" style={{ color: "#C6B185" }}>Acesso Restrito</span>
@@ -85,6 +89,7 @@ export function LoginPage({ onLogin }) {
             </button>
           </form>
         </div>
+
       </div>
     </div>
   );
