@@ -227,11 +227,11 @@ export function Dashboard({ onLogout }) {
       <header className="sticky top-0 z-10 shadow-md" style={{ backgroundColor: "#08332C" }}>
         <div className="w-full px-4 py-3 flex items-center justify-between">
           <div className="flex items-center gap-3">
-            <div className="rounded-lg px-2 py-1" style={{ backgroundColor: "#EADAB8" }}>
+            <div className="rounded-xl px-3 py-1.5" style={{ backgroundColor: "#EADAB8" }}>
               <img
                 src="/logo-leoncio.png"
                 alt="Leoncio Assessoria Empresarial"
-                style={{ height: "38px", objectFit: "contain" }}
+                style={{ height: "36px", objectFit: "contain" }}
               />
             </div>
             <p className="text-xs hidden sm:block" style={{ color: "#EADAB8", opacity: 0.7 }}>Gestão de Alvarás e Licenças</p>

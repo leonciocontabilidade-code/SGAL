@@ -38,12 +38,13 @@ export function LoginPage({ onLogin }) {
       <div className="w-full max-w-sm">
         {/* Logo */}
         <div className="text-center mb-8">
-          <img
-            src="/logo-leoncio.png"
-            alt="Leoncio Assessoria Empresarial"
-            className="mx-auto mb-4"
-            style={{ height: "120px", objectFit: "contain" }}
-          />
+          <div className="mx-auto mb-4 rounded-2xl shadow-lg overflow-hidden inline-block" style={{ backgroundColor: "white", padding: "16px 24px" }}>
+            <img
+              src="/logo-leoncio.png"
+              alt="Leoncio Assessoria Empresarial"
+              style={{ height: "110px", objectFit: "contain", display: "block" }}
+            />
+          </div>
           <p className="text-sm font-medium mt-1" style={{ color: "#0C483E" }}>Sistema de Gestão de Alvarás e Licenças</p>
         </div>
 
