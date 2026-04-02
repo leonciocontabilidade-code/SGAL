@@ -244,6 +244,39 @@ async def notificar_alvara(
     return {"sucesso": True, "mensagem": mensagem}
 
 
+@router.post("/{alvara_id}/notificar-renovacao")
+async def notificar_renovacao(
+    alvara_id: int,
+    db: AsyncSession = Depends(get_db),
+    _: str = Depends(get_current_user),
+) -> dict:
+    """Envia ao cliente o status atual do processo de renovação via e-mail."""
+    from app.services.alert_service import enviar_email_alerta
+
+    alvara = await _get_or_404(alvara_id, db)
+
+    if not alvara.email_contato:
+        raise HTTPException(status_code=400, detail="Alvará sem e-mail de contato definido.")
+
+    STATUS_LABELS = {
+        "NAO_INICIADA":    "Não Iniciada",
+        "EM_ANDAMENTO":    "Em Andamento",
+        "AGUARDANDO_DOCS": "Aguardando Documentos",
+        "RENOVADO":        "Renovado",
+        "CANCELADO":       "Cancelado",
+    }
+    status_label = STATUS_LABELS.get(str(alvara.status_renovacao), str(alvara.status_renovacao))
+    mensagem = (
+        f"Atualização do processo de renovação do seu alvará.\n\n"
+        f"Status atual: {status_label}\n"
+        + (f"Protocolo de renovação: {alvara.numero_protocolo_renovacao}\n" if alvara.numero_protocolo_renovacao else "")
+        + (f"Data do protocolo: {alvara.data_protocolo_renovacao}\n" if alvara.data_protocolo_renovacao else "")
+        + (f"\nObservações: {alvara.observacoes_renovacao}" if alvara.observacoes_renovacao else "")
+    )
+    await enviar_email_alerta(alvara, mensagem)
+    return {"sucesso": True}
+
+
 @router.post("/{alvara_id}/resolver-alerta")
 async def resolver_alerta(
     alvara_id: int,
@@ -337,6 +370,8 @@ def _to_response(alvara: Alvara) -> AlvaraResponse:
                 "status_processamento", "erro_processamento", "confianca_extracao",
                 "alerta_enviado_amarelo", "alerta_enviado_vermelho", "alerta_resolvido",
                 "criado_em", "atualizado_em",
+                "status_renovacao", "data_protocolo_renovacao", "numero_protocolo_renovacao",
+                "observacoes_renovacao", "data_renovacao_efetiva",
             ]
         },
         dias_para_vencer=alvara.dias_para_vencer,

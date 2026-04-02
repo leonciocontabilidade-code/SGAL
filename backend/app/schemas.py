@@ -3,7 +3,7 @@ from typing import Optional
 from pydantic import BaseModel, Field, field_validator
 import re
 
-from app.models import TipoAlvara, StatusVencimento, StatusProcessamento
+from app.models import TipoAlvara, StatusVencimento, StatusProcessamento, StatusRenovacao
 
 
 # ── Resposta da IA ────────────────────────────────────────────────────────────
@@ -56,6 +56,12 @@ class AlvaraUpdate(BaseModel):
     data_vencimento: Optional[date] = None
     email_contato: Optional[str] = None
     alerta_resolvido: Optional[bool] = None
+    # Renovação
+    status_renovacao: Optional[StatusRenovacao] = None
+    data_protocolo_renovacao: Optional[date] = None
+    numero_protocolo_renovacao: Optional[str] = None
+    observacoes_renovacao: Optional[str] = None
+    data_renovacao_efetiva: Optional[date] = None
 
 
 class AlvaraResponse(AlvaraBase):
@@ -69,6 +75,13 @@ class AlvaraResponse(AlvaraBase):
     alerta_resolvido: bool
     criado_em: datetime
     atualizado_em: datetime
+
+    # Renovação
+    status_renovacao: StatusRenovacao = StatusRenovacao.NAO_INICIADA
+    data_protocolo_renovacao: Optional[date] = None
+    numero_protocolo_renovacao: Optional[str] = None
+    observacoes_renovacao: Optional[str] = None
+    data_renovacao_efetiva: Optional[date] = None
 
     # Campos computados
     dias_para_vencer: Optional[int] = None

@@ -55,6 +55,7 @@ export const api = {
     listarAlertas: (id) => request(`/alvaras/${id}/alertas`),
     notificar: (id) => request(`/alvaras/${id}/notificar`, { method: "POST" }),
     resolverAlerta: (id) => request(`/alvaras/${id}/resolver-alerta`, { method: "POST" }),
+    notificarRenovacao: (id) => request(`/alvaras/${id}/notificar-renovacao`, { method: "POST" }),
     criar: (dados) =>
       request("/alvaras/", {
         method: "POST",

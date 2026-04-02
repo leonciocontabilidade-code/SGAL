@@ -32,6 +32,14 @@ class StatusProcessamento(str, enum.Enum):
     ERRO = "ERRO"
 
 
+class StatusRenovacao(str, enum.Enum):
+    NAO_INICIADA    = "NAO_INICIADA"
+    EM_ANDAMENTO    = "EM_ANDAMENTO"
+    AGUARDANDO_DOCS = "AGUARDANDO_DOCS"
+    RENOVADO        = "RENOVADO"
+    CANCELADO       = "CANCELADO"
+
+
 class Alvara(Base):
     __tablename__ = "alvaras"
 
@@ -70,6 +78,15 @@ class Alvara(Base):
 
     # Alerta resolvido/reconhecido pelo operador
     alerta_resolvido: Mapped[bool] = mapped_column(Boolean, default=False)
+
+    # Renovação
+    status_renovacao: Mapped[StatusRenovacao] = mapped_column(
+        Enum(StatusRenovacao), default=StatusRenovacao.NAO_INICIADA, nullable=False
+    )
+    data_protocolo_renovacao: Mapped[Optional[date]] = mapped_column(Date, nullable=True)
+    numero_protocolo_renovacao: Mapped[Optional[str]] = mapped_column(String(100), nullable=True)
+    observacoes_renovacao: Mapped[Optional[str]] = mapped_column(Text, nullable=True)
+    data_renovacao_efetiva: Mapped[Optional[date]] = mapped_column(Date, nullable=True)
 
     # Metadados
     criado_em: Mapped[datetime] = mapped_column(

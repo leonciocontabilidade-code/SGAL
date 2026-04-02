@@ -52,18 +52,30 @@ async def _run_migrations(conn) -> None:
     if _is_sqlite:
         result = await conn.execute(text("PRAGMA table_info(alvaras)"))
         cols = {row[1] for row in result.fetchall()}
-        if "email_contato" not in cols:
-            await conn.execute(text("ALTER TABLE alvaras ADD COLUMN email_contato VARCHAR(255)"))
-        if "alerta_resolvido" not in cols:
-            await conn.execute(text("ALTER TABLE alvaras ADD COLUMN alerta_resolvido BOOLEAN NOT NULL DEFAULT 0"))
+        sqlite_migrations = [
+            ("email_contato",             "ALTER TABLE alvaras ADD COLUMN email_contato VARCHAR(255)"),
+            ("alerta_resolvido",          "ALTER TABLE alvaras ADD COLUMN alerta_resolvido BOOLEAN NOT NULL DEFAULT 0"),
+            ("status_renovacao",          "ALTER TABLE alvaras ADD COLUMN status_renovacao VARCHAR(20) NOT NULL DEFAULT 'NAO_INICIADA'"),
+            ("data_protocolo_renovacao",  "ALTER TABLE alvaras ADD COLUMN data_protocolo_renovacao DATE"),
+            ("numero_protocolo_renovacao","ALTER TABLE alvaras ADD COLUMN numero_protocolo_renovacao VARCHAR(100)"),
+            ("observacoes_renovacao",     "ALTER TABLE alvaras ADD COLUMN observacoes_renovacao TEXT"),
+            ("data_renovacao_efetiva",    "ALTER TABLE alvaras ADD COLUMN data_renovacao_efetiva DATE"),
+        ]
+        for col_name, sql in sqlite_migrations:
+            if col_name not in cols:
+                await conn.execute(text(sql))
     else:
-        # PostgreSQL suporta IF NOT EXISTS
-        await conn.execute(text(
-            "ALTER TABLE alvaras ADD COLUMN IF NOT EXISTS email_contato VARCHAR(255)"
-        ))
-        await conn.execute(text(
-            "ALTER TABLE alvaras ADD COLUMN IF NOT EXISTS alerta_resolvido BOOLEAN NOT NULL DEFAULT FALSE"
-        ))
+        pg_migrations = [
+            "ALTER TABLE alvaras ADD COLUMN IF NOT EXISTS email_contato VARCHAR(255)",
+            "ALTER TABLE alvaras ADD COLUMN IF NOT EXISTS alerta_resolvido BOOLEAN NOT NULL DEFAULT FALSE",
+            "ALTER TABLE alvaras ADD COLUMN IF NOT EXISTS status_renovacao VARCHAR(20) NOT NULL DEFAULT 'NAO_INICIADA'",
+            "ALTER TABLE alvaras ADD COLUMN IF NOT EXISTS data_protocolo_renovacao DATE",
+            "ALTER TABLE alvaras ADD COLUMN IF NOT EXISTS numero_protocolo_renovacao VARCHAR(100)",
+            "ALTER TABLE alvaras ADD COLUMN IF NOT EXISTS observacoes_renovacao TEXT",
+            "ALTER TABLE alvaras ADD COLUMN IF NOT EXISTS data_renovacao_efetiva DATE",
+        ]
+        for sql in pg_migrations:
+            await conn.execute(text(sql))
 
 
 async def init_db() -> None:

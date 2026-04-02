@@ -38,7 +38,16 @@ const COLUNAS = [
   { key: "dias_para_vencer", label: "Dias" },
   { key: "status_vencimento", label: "Status" },
   { key: "confianca_extracao", label: "IA%" },
+  { key: "status_renovacao", label: "Renovação" },
 ];
+
+const RENOVACAO_BADGE = {
+  NAO_INICIADA:    { label: "—",               cls: "text-gray-400" },
+  EM_ANDAMENTO:    { label: "Em Andamento",     cls: "bg-blue-100 text-blue-700" },
+  AGUARDANDO_DOCS: { label: "Aguard. Docs",     cls: "bg-orange-100 text-orange-700" },
+  RENOVADO:        { label: "Renovado ✓",       cls: "bg-green-100 text-green-700" },
+  CANCELADO:       { label: "Cancelado",        cls: "bg-red-100 text-red-700" },
+};
 
 const MESES_PT = [
   "Janeiro","Fevereiro","Março","Abril","Maio","Junho",
@@ -527,6 +536,14 @@ function LinhaAlvara({ alvara, formatarData, corLinha, deletando, onDeletar, onE
       </td>
       <td className="px-4 py-3">
         <ConfiancaBadge valor={alvara.confianca_extracao} />
+      </td>
+      <td className="px-4 py-3">
+        {(() => {
+          const r = RENOVACAO_BADGE[alvara.status_renovacao] || RENOVACAO_BADGE.NAO_INICIADA;
+          return r.label === "—"
+            ? <span className={r.cls}>—</span>
+            : <span className={`text-xs font-semibold px-2 py-0.5 rounded-full ${r.cls}`}>{r.label}</span>;
+        })()}
       </td>
       <td className="px-4 py-3 text-right">
         <div className="flex items-center justify-end gap-1">
