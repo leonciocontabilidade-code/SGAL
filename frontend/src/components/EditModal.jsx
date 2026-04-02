@@ -49,8 +49,8 @@ function ConfiancaBadge({ valor }) {
   );
 }
 
-export function EditModal({ alvara, onClose, onSaved }) {
-  const [abaAtiva, setAbaAtiva] = useState("dados");
+export function EditModal({ alvara, onClose, onSaved, abaInicial = "dados" }) {
+  const [abaAtiva, setAbaAtiva] = useState(abaInicial);
   const [form, setForm] = useState({
     razao_social: alvara.razao_social || "",
     cnpj: alvara.cnpj || "",

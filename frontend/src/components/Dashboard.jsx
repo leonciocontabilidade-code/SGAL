@@ -2,7 +2,8 @@ import { useState, useCallback } from "react";
 import {
   FileText, RefreshCw, CheckCircle, AlertTriangle,
   XCircle, HelpCircle, Filter, Trash2, Edit2, ChevronUp, ChevronDown, Bell,
-  Download, ChevronLeft, ChevronRight, Settings, User
+  Download, ChevronLeft, ChevronRight, Settings, User, RotateCcw,
+  ShieldAlert, Flame, Building2, Leaf
 } from "lucide-react";
 import { useDashboard } from "../hooks/useDashboard";
 import { UploadZone } from "./UploadZone";
@@ -15,31 +16,38 @@ import { ConfigModal } from "./ConfigModal";
 import { api } from "../services/api";
 
 const TIPOS = [
-  { value: "TODOS",        label: "Todos os tipos" },
-  { value: "SANITARIO",   label: "Alvará Sanitário" },
-  { value: "BOMBEIROS",   label: "Certificado do Bombeiros" },
-  { value: "FUNCIONAMENTO", label: "Alvará de Localização e Funcionamento" },
-  { value: "AMA",          label: "Alvará Ambiental" },
+  { value: "TODOS",          label: "Todos os tipos" },
+  { value: "SANITARIO",      label: "Alvará Sanitário" },
+  { value: "BOMBEIROS",      label: "Certificado do Bombeiros" },
+  { value: "FUNCIONAMENTO",  label: "Alvará de Funcionamento" },
+  { value: "AMA",            label: "Alvará Ambiental" },
 ];
 
 const TIPO_LABELS = {
-  SANITARIO: "Alvará Sanitário",
-  BOMBEIROS: "Certificado do Bombeiros",
+  SANITARIO:     "Alvará Sanitário",
+  BOMBEIROS:     "Certificado do Bombeiros",
   FUNCIONAMENTO: "Alvará de Localização e Funcionamento",
-  AMA: "Alvará Ambiental",
-  DESCONHECIDO: "Desconhecido",
+  AMA:           "Alvará Ambiental",
+  DESCONHECIDO:  "Desconhecido",
+};
+
+const TIPO_CONFIG = {
+  SANITARIO:     { label: "Sanitário",    icone: ShieldAlert, cor: "#0ea5e9", corBg: "#f0f9ff", corBorda: "#7dd3fc" },
+  BOMBEIROS:     { label: "Bombeiros",    icone: Flame,       cor: "#ef4444", corBg: "#fff5f5", corBorda: "#fca5a5" },
+  FUNCIONAMENTO: { label: "Funcionamento",icone: Building2,   cor: "#8b5cf6", corBg: "#faf5ff", corBorda: "#c4b5fd" },
+  AMA:           { label: "Ambiental",    icone: Leaf,        cor: "#22c55e", corBg: "#f0fdf4", corBorda: "#86efac" },
 };
 
 const COLUNAS = [
-  { key: "razao_social", label: "Empresa" },
-  { key: "cnpj", label: "CNPJ" },
-  { key: "tipo", label: "Tipo" },
-  { key: "numero_protocolo", label: "Protocolo" },
-  { key: "data_vencimento", label: "Vencimento" },
-  { key: "dias_para_vencer", label: "Dias" },
-  { key: "status_vencimento", label: "Status" },
+  { key: "razao_social",        label: "Empresa" },
+  { key: "cnpj",               label: "CNPJ" },
+  { key: "tipo",               label: "Tipo" },
+  { key: "numero_protocolo",   label: "Protocolo" },
+  { key: "data_vencimento",    label: "Vencimento" },
+  { key: "dias_para_vencer",   label: "Dias" },
+  { key: "status_vencimento",  label: "Status" },
   { key: "confianca_extracao", label: "IA%" },
-  { key: "status_renovacao", label: "Renovação" },
+  { key: "status_renovacao",   label: "Renovação" },
 ];
 
 const RENOVACAO_BADGE = {
@@ -73,6 +81,91 @@ function agruparPorMes(lista) {
   return Object.entries(grupos).sort(([a], [b]) => a.localeCompare(b));
 }
 
+// ── Card de resumo por tipo ────────────────────────────────────────────────
+function CardTipo({ tipo, alvaras, filtroTipo, filtroStatus, onFiltrar }) {
+  const cfg = TIPO_CONFIG[tipo];
+  const Icone = cfg.icone;
+  const lista = alvaras.filter((a) => a.tipo === tipo);
+  const total = lista.length;
+  const vencidos = lista.filter((a) => a.dias_para_vencer !== null && a.dias_para_vencer < 0).length;
+  const criticos = lista.filter((a) => a.status_vencimento === "VERMELHO").length;
+  const atenção = lista.filter((a) => a.status_vencimento === "AMARELO").length;
+  const emDia = lista.filter((a) => a.status_vencimento === "VERDE").length;
+
+  const ativo = filtroTipo === tipo;
+  const ativoVencido = ativo && filtroStatus === "VERMELHO";
+
+  return (
+    <div
+      className="rounded-xl shadow-sm overflow-hidden cursor-pointer transition-all hover:shadow-md"
+      style={{
+        backgroundColor: ativo ? cfg.cor : "white",
+        border: `2px solid ${ativo ? cfg.cor : cfg.corBorda}`,
+        transform: ativo ? "scale(1.02)" : "scale(1)",
+      }}
+      onClick={() => onFiltrar(tipo, null)}
+    >
+      <div className="p-4">
+        <div className="flex items-center justify-between mb-3">
+          <div className="flex items-center gap-2">
+            <div
+              className="p-2 rounded-lg"
+              style={{ backgroundColor: ativo ? "rgba(255,255,255,0.2)" : cfg.corBg }}
+            >
+              <Icone className="w-4 h-4" style={{ color: ativo ? "white" : cfg.cor }} />
+            </div>
+            <span className="text-sm font-bold" style={{ color: ativo ? "white" : "#1f2937" }}>
+              {cfg.label}
+            </span>
+          </div>
+          <span
+            className="text-2xl font-black"
+            style={{ color: ativo ? "white" : cfg.cor }}
+          >
+            {total}
+          </span>
+        </div>
+
+        <div className="grid grid-cols-3 gap-1 text-center">
+          <button
+            onClick={(e) => { e.stopPropagation(); onFiltrar(tipo, "VERMELHO"); }}
+            className="rounded-lg py-1.5 px-1 transition-colors"
+            style={{
+              backgroundColor: ativoVencido ? "rgba(255,255,255,0.3)" : ativo ? "rgba(255,255,255,0.15)" : "#fef2f2",
+              border: `1px solid ${ativoVencido ? "white" : ativo ? "rgba(255,255,255,0.3)" : "#fca5a5"}`,
+            }}
+          >
+            <div className="text-xs font-black" style={{ color: ativo ? "white" : "#dc2626" }}>{criticos}</div>
+            <div className="text-[10px] font-medium" style={{ color: ativo ? "rgba(255,255,255,0.8)" : "#6b7280" }}>Crítico</div>
+          </button>
+          <button
+            onClick={(e) => { e.stopPropagation(); onFiltrar(tipo, "AMARELO"); }}
+            className="rounded-lg py-1.5 px-1 transition-colors"
+            style={{
+              backgroundColor: ativo ? "rgba(255,255,255,0.15)" : "#fffbeb",
+              border: `1px solid ${ativo ? "rgba(255,255,255,0.3)" : "#fcd34d"}`,
+            }}
+          >
+            <div className="text-xs font-black" style={{ color: ativo ? "white" : "#d97706" }}>{atenção}</div>
+            <div className="text-[10px] font-medium" style={{ color: ativo ? "rgba(255,255,255,0.8)" : "#6b7280" }}>Atenção</div>
+          </button>
+          <button
+            onClick={(e) => { e.stopPropagation(); onFiltrar(tipo, "VERDE"); }}
+            className="rounded-lg py-1.5 px-1 transition-colors"
+            style={{
+              backgroundColor: ativo ? "rgba(255,255,255,0.15)" : "#f0fdf4",
+              border: `1px solid ${ativo ? "rgba(255,255,255,0.3)" : "#86efac"}`,
+            }}
+          >
+            <div className="text-xs font-black" style={{ color: ativo ? "white" : "#16a34a" }}>{emDia}</div>
+            <div className="text-[10px] font-medium" style={{ color: ativo ? "rgba(255,255,255,0.8)" : "#6b7280" }}>Em dia</div>
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
 export function Dashboard({ onLogout, usuario }) {
   const { data, loading, error, recarregar } = useDashboard();
   const [filtroTipo, setFiltroTipo] = useState("TODOS");
@@ -83,6 +176,7 @@ export function Dashboard({ onLogout, usuario }) {
   const [abaUpload, setAbaUpload] = useState("pdf");
   const [deletando, setDeletando] = useState(null);
   const [editando, setEditando] = useState(null);
+  const [editandoAba, setEditandoAba] = useState("dados");
   const [configAberto, setConfigAberto] = useState(false);
   const [notificando, setNotificando] = useState(null);
   const [toasts, setToasts] = useState([]);
@@ -93,10 +187,22 @@ export function Dashboard({ onLogout, usuario }) {
   const totalPaginas = data?.total_paginas ?? 1;
   const paginaAtual = data?.pagina ?? 1;
 
+  // Filtrar pelo card de tipo
+  const handleFiltrarTipo = (tipo, status) => {
+    if (filtroTipo === tipo && filtroStatus === status) {
+      // deseleciona se clicar no mesmo
+      setFiltroTipo("TODOS");
+      setFiltroStatus(null);
+    } else {
+      setFiltroTipo(tipo);
+      setFiltroStatus(status);
+    }
+  };
+
   const toggleFiltroStatus = (status) =>
     setFiltroStatus((prev) => (prev === status ? null : status));
 
-  // Filtro e ordenação local (sobre a página atual)
+  // Filtro e ordenação local
   const filtrados = alvaras
     .filter((a) => filtroTipo === "TODOS" || a.tipo === filtroTipo)
     .filter((a) => {
@@ -160,6 +266,16 @@ export function Dashboard({ onLogout, usuario }) {
     }
   };
 
+  const abrirRenovacao = (alvara) => {
+    setEditando(alvara);
+    setEditandoAba("renovacao");
+  };
+
+  const abrirEdicao = (alvara) => {
+    setEditando(alvara);
+    setEditandoAba("dados");
+  };
+
   const formatarData = (data) => {
     if (!data) return "—";
     return new Date(data + "T00:00:00").toLocaleDateString("pt-BR");
@@ -171,7 +287,6 @@ export function Dashboard({ onLogout, usuario }) {
     return "hover:bg-gray-50";
   };
 
-  // ── CSV Export ────────────────────────────────────────────────────────────
   const exportarCSV = useCallback(() => {
     const headers = ["Empresa", "CNPJ", "Tipo", "Protocolo", "Emissão", "Vencimento", "Dias", "Status", "Confiança IA (%)", "E-mail Contato"];
     const rows = filtrados.map((a) => [
@@ -198,7 +313,6 @@ export function Dashboard({ onLogout, usuario }) {
     URL.revokeObjectURL(url);
   }, [filtrados]);
 
-  // ── Backup do banco ────────────────────────────────────────────────────────
   const baixarBackup = useCallback(async () => {
     const token = sessionStorage.getItem("sgal_token");
     const res = await fetch("/api/admin/backup", {
@@ -225,16 +339,15 @@ export function Dashboard({ onLogout, usuario }) {
         ))}
       </div>
 
-      {/* Modal de edição */}
       {editando && (
         <EditModal
           alvara={editando}
-          onClose={() => setEditando(null)}
+          abaInicial={editandoAba}
+          onClose={() => { setEditando(null); setEditandoAba("dados"); }}
           onSaved={recarregar}
         />
       )}
 
-      {/* Modal de configurações */}
       {configAberto && (
         <ConfigModal
           onClose={() => setConfigAberto(false)}
@@ -255,7 +368,6 @@ export function Dashboard({ onLogout, usuario }) {
             </div>
           </div>
           <div className="flex items-center gap-2">
-            {/* Usuário logado */}
             {usuario?.nome && (
               <div className="hidden sm:flex items-center gap-1.5 px-3 py-1.5 rounded-lg"
                 style={{ backgroundColor: "#0C483E" }}>
@@ -300,18 +412,32 @@ export function Dashboard({ onLogout, usuario }) {
           </div>
         )}
 
-        {/* Cards de estatísticas */}
+        {/* ── DASHBOARD: Cards por tipo ─────────────────────────────────── */}
+        <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
+          {Object.keys(TIPO_CONFIG).map((tipo) => (
+            <CardTipo
+              key={tipo}
+              tipo={tipo}
+              alvaras={alvaras}
+              filtroTipo={filtroTipo}
+              filtroStatus={filtroStatus}
+              onFiltrar={handleFiltrarTipo}
+            />
+          ))}
+        </div>
+
+        {/* ── Stats gerais ─────────────────────────────────────────────── */}
         {stats && (
           <div className="grid grid-cols-2 md:grid-cols-5 gap-3">
             <StatsCard label="Total" valor={stats.total} cor="azul" icone={FileText} />
             <StatsCard label="Em dia" valor={stats.verdes} cor="verde" icone={CheckCircle} sublabel="> 60 dias"
-              onClick={() => toggleFiltroStatus("VERDE")} ativo={filtroStatus === "VERDE"} />
+              onClick={() => { setFiltroTipo("TODOS"); toggleFiltroStatus("VERDE"); }} ativo={filtroTipo === "TODOS" && filtroStatus === "VERDE"} />
             <StatsCard label="Atenção" valor={stats.amarelos} cor="amarelo" icone={AlertTriangle} sublabel="15–60 dias"
-              onClick={() => toggleFiltroStatus("AMARELO")} ativo={filtroStatus === "AMARELO"} />
+              onClick={() => { setFiltroTipo("TODOS"); toggleFiltroStatus("AMARELO"); }} ativo={filtroTipo === "TODOS" && filtroStatus === "AMARELO"} />
             <StatsCard label="Crítico" valor={stats.vermelhos} cor="vermelho" icone={XCircle} sublabel="< 15 dias / vencido"
-              onClick={() => toggleFiltroStatus("VERMELHO")} ativo={filtroStatus === "VERMELHO"} />
+              onClick={() => { setFiltroTipo("TODOS"); toggleFiltroStatus("VERMELHO"); }} ativo={filtroTipo === "TODOS" && filtroStatus === "VERMELHO"} />
             <StatsCard label="Sem data" valor={stats.sem_vencimento} cor="cinza" icone={HelpCircle}
-              onClick={() => toggleFiltroStatus("SEM_DATA")} ativo={filtroStatus === "SEM_DATA"} />
+              onClick={() => { setFiltroTipo("TODOS"); toggleFiltroStatus("SEM_DATA"); }} ativo={filtroTipo === "TODOS" && filtroStatus === "SEM_DATA"} />
           </div>
         )}
 
@@ -353,17 +479,32 @@ export function Dashboard({ onLogout, usuario }) {
             <section className="rounded-xl shadow-sm overflow-hidden" style={{ backgroundColor: "white" }}>
               {/* Toolbar */}
               <div className="px-4 py-3 border-b flex flex-col gap-2" style={{ borderColor: "#EADAB8" }}>
-                {filtroStatus && (
-                  <div className="flex items-center gap-2 text-xs">
-                    <span className="text-gray-500">Filtro ativo:</span>
-                    <span className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full font-semibold ${
-                      filtroStatus === "VERDE" ? "bg-green-100 text-green-700" :
-                      filtroStatus === "AMARELO" ? "bg-yellow-100 text-yellow-700" :
-                      filtroStatus === "VERMELHO" ? "bg-red-100 text-red-700" : "bg-gray-100 text-gray-600"
-                    }`}>
-                      {filtroStatus === "VERDE" ? "Em dia" : filtroStatus === "AMARELO" ? "Atenção" : filtroStatus === "VERMELHO" ? "Crítico" : "Sem data"}
-                      <button onClick={() => setFiltroStatus(null)} className="ml-1 hover:opacity-70">✕</button>
-                    </span>
+                {/* Filtros ativos */}
+                {(filtroStatus || filtroTipo !== "TODOS") && (
+                  <div className="flex items-center gap-2 text-xs flex-wrap">
+                    <span className="text-gray-500">Filtros:</span>
+                    {filtroTipo !== "TODOS" && (
+                      <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full font-semibold bg-indigo-100 text-indigo-700">
+                        {TIPO_CONFIG[filtroTipo]?.label || filtroTipo}
+                        <button onClick={() => setFiltroTipo("TODOS")} className="ml-1 hover:opacity-70">✕</button>
+                      </span>
+                    )}
+                    {filtroStatus && (
+                      <span className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full font-semibold ${
+                        filtroStatus === "VERDE" ? "bg-green-100 text-green-700" :
+                        filtroStatus === "AMARELO" ? "bg-yellow-100 text-yellow-700" :
+                        filtroStatus === "VERMELHO" ? "bg-red-100 text-red-700" : "bg-gray-100 text-gray-600"
+                      }`}>
+                        {filtroStatus === "VERDE" ? "Em dia" : filtroStatus === "AMARELO" ? "Atenção" : filtroStatus === "VERMELHO" ? "Crítico" : "Sem data"}
+                        <button onClick={() => setFiltroStatus(null)} className="ml-1 hover:opacity-70">✕</button>
+                      </span>
+                    )}
+                    <button
+                      onClick={() => { setFiltroTipo("TODOS"); setFiltroStatus(null); }}
+                      className="text-gray-400 hover:text-gray-600 underline"
+                    >
+                      Limpar tudo
+                    </button>
                   </div>
                 )}
                 <div className="flex flex-col sm:flex-row gap-2">
@@ -471,13 +612,15 @@ export function Dashboard({ onLogout, usuario }) {
                           ...grupo.map((alvara) => (
                             <LinhaAlvara key={alvara.id} alvara={alvara} formatarData={formatarData}
                               corLinha={corLinhaPorStatus} deletando={deletando} onDeletar={deletar}
-                              onEditar={setEditando} notificando={notificando} onNotificar={notificar} />
+                              onEditar={abrirEdicao} onRenovar={abrirRenovacao}
+                              notificando={notificando} onNotificar={notificar} />
                           ))
                         ])
                       : filtrados.map((alvara) => (
                           <LinhaAlvara key={alvara.id} alvara={alvara} formatarData={formatarData}
                             corLinha={corLinhaPorStatus} deletando={deletando} onDeletar={deletar}
-                            onEditar={setEditando} notificando={notificando} onNotificar={notificar} />
+                            onEditar={abrirEdicao} onRenovar={abrirRenovacao}
+                            notificando={notificando} onNotificar={notificar} />
                         ))
                     )}
                   </tbody>
@@ -527,8 +670,9 @@ function ConfiancaBadge({ valor }) {
   return <span className={`font-semibold text-xs ${cor}`}>{valor}%</span>;
 }
 
-function LinhaAlvara({ alvara, formatarData, corLinha, deletando, onDeletar, onEditar, notificando, onNotificar }) {
+function LinhaAlvara({ alvara, formatarData, corLinha, deletando, onDeletar, onEditar, onRenovar, notificando, onNotificar }) {
   const dias = alvara.dias_para_vencer;
+  const renovBadge = RENOVACAO_BADGE[alvara.status_renovacao] || RENOVACAO_BADGE.NAO_INICIADA;
   return (
     <tr className={`transition-colors ${corLinha(alvara.status_vencimento)}`}>
       <td className="px-4 py-3">
@@ -564,22 +708,28 @@ function LinhaAlvara({ alvara, formatarData, corLinha, deletando, onDeletar, onE
         <ConfiancaBadge valor={alvara.confianca_extracao} />
       </td>
       <td className="px-4 py-3">
-        {(() => {
-          const r = RENOVACAO_BADGE[alvara.status_renovacao] || RENOVACAO_BADGE.NAO_INICIADA;
-          return r.label === "—"
-            ? <span className={r.cls}>—</span>
-            : <span className={`text-xs font-semibold px-2 py-0.5 rounded-full ${r.cls}`}>{r.label}</span>;
-        })()}
+        {renovBadge.label === "—"
+          ? <span className={renovBadge.cls}>—</span>
+          : <span className={`text-xs font-semibold px-2 py-0.5 rounded-full ${renovBadge.cls}`}>{renovBadge.label}</span>
+        }
       </td>
       <td className="px-4 py-3 text-right">
         <div className="flex items-center justify-end gap-1">
           <button
             onClick={() => onEditar(alvara)}
-            className="p-1.5 rounded transition-colors"
+            className="p-1.5 rounded transition-colors hover:bg-gray-100"
             style={{ color: "#0C483E" }}
             title="Editar dados"
           >
             <Edit2 className="w-4 h-4" />
+          </button>
+          <button
+            onClick={() => onRenovar(alvara)}
+            className="p-1.5 rounded transition-colors hover:bg-blue-50"
+            style={{ color: "#2563eb" }}
+            title="Gerenciar renovação"
+          >
+            <RotateCcw className="w-4 h-4" />
           </button>
           <button
             onClick={() => onNotificar(alvara.id)}
