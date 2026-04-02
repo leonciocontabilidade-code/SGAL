@@ -1,5 +1,8 @@
 import { useState, useEffect } from "react";
-import { X, Save, Loader2, Search, CheckCircle, Mail, RefreshCw, ExternalLink, Send, FileText, ClipboardList } from "lucide-react";
+import {
+  X, Save, Loader2, Search, CheckCircle, Mail, RefreshCw,
+  ExternalLink, Send, FileText, ClipboardList, MapPin, Link
+} from "lucide-react";
 import { api } from "../services/api";
 
 const TIPOS = [
@@ -11,21 +14,29 @@ const TIPOS = [
 ];
 
 const STATUS_RENOVACAO = {
-  NAO_INICIADA:    { label: "Não Iniciada",          cor: "bg-gray-100 text-gray-600",     dot: "#9ca3af" },
-  EM_ANDAMENTO:    { label: "Em Andamento",           cor: "bg-blue-100 text-blue-700",     dot: "#3b82f6" },
-  AGUARDANDO_DOCS: { label: "Aguardando Documentos", cor: "bg-orange-100 text-orange-700", dot: "#f97316" },
-  RENOVADO:        { label: "Renovado ✓",             cor: "bg-green-100 text-green-700",   dot: "#22c55e" },
-  CANCELADO:       { label: "Cancelado",              cor: "bg-red-100 text-red-700",       dot: "#ef4444" },
+  NAO_INICIADA:    { label: "Não Iniciada",          cor: "bg-gray-100 text-gray-600",     dot: "#9ca3af", passo: 0 },
+  EM_ANDAMENTO:    { label: "Em Andamento",           cor: "bg-blue-100 text-blue-700",     dot: "#3b82f6", passo: 1 },
+  AGUARDANDO_DOCS: { label: "Aguardando Documentos", cor: "bg-orange-100 text-orange-700", dot: "#f97316", passo: 2 },
+  RENOVADO:        { label: "Renovado ✓",             cor: "bg-green-100 text-green-700",   dot: "#22c55e", passo: 3 },
+  CANCELADO:       { label: "Cancelado",              cor: "bg-red-100 text-red-700",       dot: "#ef4444", passo: -1 },
 };
 
-// Portais de renovação por tipo de alvará
-const PORTAIS_RENOVACAO = {
-  SANITARIO:     { url: "https://sigvisa.saude.mg.gov.br/", label: "Portal Vigilância Sanitária MG" },
-  BOMBEIROS:     { url: "https://servicos.bombeiros.mg.gov.br/", label: "Portal CBMMG" },
-  FUNCIONAMENTO: { url: "https://redesim.gov.br/", label: "Portal Redesim" },
-  AMA:           { url: "https://www.siam.mg.gov.br/", label: "Portal SIAM/MG" },
+// Portais padrão por tipo (fallback quando não há URL personalizada)
+const PORTAIS_DEFAULT = {
+  SANITARIO:     { url: "https://sigvisa.saude.mg.gov.br/",           label: "Portal Vigilância Sanitária MG" },
+  BOMBEIROS:     { url: "https://servicos.bombeiros.mg.gov.br/",       label: "Portal CBMMG" },
+  FUNCIONAMENTO: { url: "https://redesim.gov.br/",                     label: "Portal Redesim" },
+  AMA:           { url: "https://www.siam.mg.gov.br/",                 label: "Portal SIAM/MG" },
   DESCONHECIDO:  { url: "https://www.google.com/search?q=renovar+alvara+prefeitura", label: "Pesquisar portal" },
 };
+
+// Etapas do progresso de renovação
+const ETAPAS = [
+  { key: "identificado", label: "Identificado",  passo: 0 },
+  { key: "andamento",    label: "Em Andamento",  passo: 1 },
+  { key: "documentos",   label: "Aguard. Docs",  passo: 2 },
+  { key: "renovado",     label: "Renovado",      passo: 3 },
+];
 
 function formatarCNPJ(valor) {
   const digits = valor.replace(/\D/g, "").slice(0, 14);
@@ -49,6 +60,55 @@ function ConfiancaBadge({ valor }) {
   );
 }
 
+function ProgressoRenovacao({ status }) {
+  const info = STATUS_RENOVACAO[status] || STATUS_RENOVACAO.NAO_INICIADA;
+  const passoAtual = info.passo;
+  const cancelado = status === "CANCELADO";
+
+  if (cancelado) {
+    return (
+      <div className="flex items-center justify-center py-2">
+        <span className="text-xs font-semibold px-3 py-1.5 rounded-full bg-red-100 text-red-700">
+          ✕ Renovação Cancelada
+        </span>
+      </div>
+    );
+  }
+
+  return (
+    <div className="flex items-center gap-1">
+      {ETAPAS.map((etapa, idx) => {
+        const concluido = passoAtual > etapa.passo;
+        const ativo = passoAtual === etapa.passo;
+        return (
+          <div key={etapa.key} className="flex items-center flex-1">
+            <div className="flex flex-col items-center flex-1">
+              <div
+                className={`w-7 h-7 rounded-full flex items-center justify-center text-xs font-bold border-2 transition-all ${
+                  concluido ? "bg-[#08332C] border-[#08332C] text-white" :
+                  ativo     ? "bg-white border-[#08332C] text-[#08332C]" :
+                              "bg-white border-gray-300 text-gray-400"
+                }`}
+              >
+                {concluido ? "✓" : idx + 1}
+              </div>
+              <span className={`text-[10px] mt-1 text-center leading-tight ${
+                ativo ? "font-bold text-[#08332C]" :
+                concluido ? "text-[#08332C]" : "text-gray-400"
+              }`}>
+                {etapa.label}
+              </span>
+            </div>
+            {idx < ETAPAS.length - 1 && (
+              <div className={`h-0.5 w-6 mb-4 ${concluido ? "bg-[#08332C]" : "bg-gray-200"}`} />
+            )}
+          </div>
+        );
+      })}
+    </div>
+  );
+}
+
 export function EditModal({ alvara, onClose, onSaved, abaInicial = "dados" }) {
   const [abaAtiva, setAbaAtiva] = useState(abaInicial);
   const [form, setForm] = useState({
@@ -59,12 +119,14 @@ export function EditModal({ alvara, onClose, onSaved, abaInicial = "dados" }) {
     data_emissao: alvara.data_emissao || "",
     data_vencimento: alvara.data_vencimento || "",
     email_contato: alvara.email_contato || "",
+    municipio: alvara.municipio || "",
     // Renovação
     status_renovacao: alvara.status_renovacao || "NAO_INICIADA",
     data_protocolo_renovacao: alvara.data_protocolo_renovacao || "",
     numero_protocolo_renovacao: alvara.numero_protocolo_renovacao || "",
     observacoes_renovacao: alvara.observacoes_renovacao || "",
     data_renovacao_efetiva: alvara.data_renovacao_efetiva || "",
+    url_portal_renovacao: alvara.url_portal_renovacao || "",
   });
   const [salvando, setSalvando] = useState(false);
   const [erro, setErro] = useState(null);
@@ -99,7 +161,12 @@ export function EditModal({ alvara, onClose, onSaved, abaInicial = "dados" }) {
       const res = await fetch(`https://brasilapi.com.br/api/cnpj/v1/${digits}`);
       if (!res.ok) throw new Error("CNPJ não encontrado na Receita Federal");
       const dados = await res.json();
-      setForm((f) => ({ ...f, razao_social: dados.razao_social || f.razao_social, cnpj: formatarCNPJ(digits) }));
+      setForm((f) => ({
+        ...f,
+        razao_social: dados.razao_social || f.razao_social,
+        cnpj: formatarCNPJ(digits),
+        municipio: dados.municipio || f.municipio,
+      }));
       setCnpjOk(true);
     } catch (e) {
       setErroCNPJ(e.message);
@@ -112,20 +179,23 @@ export function EditModal({ alvara, onClose, onSaved, abaInicial = "dados" }) {
     setSalvando(true);
     setErro(null);
     try {
-      const payload = {};
+      const payload = {
+        tipo: form.tipo,
+        email_contato: form.email_contato || null,
+        municipio: form.municipio || null,
+        // Renovação
+        status_renovacao: form.status_renovacao,
+        data_protocolo_renovacao: form.data_protocolo_renovacao || null,
+        numero_protocolo_renovacao: form.numero_protocolo_renovacao || null,
+        observacoes_renovacao: form.observacoes_renovacao || null,
+        data_renovacao_efetiva: form.data_renovacao_efetiva || null,
+        url_portal_renovacao: form.url_portal_renovacao || null,
+      };
       if (form.razao_social) payload.razao_social = form.razao_social;
       if (form.cnpj) payload.cnpj = form.cnpj;
-      payload.tipo = form.tipo;
       if (form.numero_protocolo) payload.numero_protocolo = form.numero_protocolo;
       if (form.data_emissao) payload.data_emissao = form.data_emissao;
       if (form.data_vencimento) payload.data_vencimento = form.data_vencimento;
-      payload.email_contato = form.email_contato || null;
-      // Renovação
-      payload.status_renovacao = form.status_renovacao;
-      payload.data_protocolo_renovacao = form.data_protocolo_renovacao || null;
-      payload.numero_protocolo_renovacao = form.numero_protocolo_renovacao || null;
-      payload.observacoes_renovacao = form.observacoes_renovacao || null;
-      payload.data_renovacao_efetiva = form.data_renovacao_efetiva || null;
 
       await api.alvaras.atualizar(alvara.id, payload);
       onSaved();
@@ -153,8 +223,13 @@ export function EditModal({ alvara, onClose, onSaved, abaInicial = "dados" }) {
 
   const labelStyle = "block text-xs font-semibold uppercase tracking-wide mb-1.5";
   const inputStyle = "w-full rounded-lg border px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-[#0C483E] border-gray-200";
-  const portal = PORTAIS_RENOVACAO[form.tipo] || PORTAIS_RENOVACAO.DESCONHECIDO;
   const statusInfo = STATUS_RENOVACAO[form.status_renovacao] || STATUS_RENOVACAO.NAO_INICIADA;
+
+  // URL do portal: usa a custom do alvará, senão o padrão global do tipo
+  const portalUrl = form.url_portal_renovacao || PORTAIS_DEFAULT[form.tipo]?.url || "";
+  const portalLabel = form.url_portal_renovacao
+    ? "Acessar Portal Configurado"
+    : (PORTAIS_DEFAULT[form.tipo]?.label || "Acessar Portal");
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm p-4">
@@ -236,11 +311,26 @@ export function EditModal({ alvara, onClose, onSaved, abaInicial = "dados" }) {
               <input type="text" value={form.razao_social} onChange={set("razao_social")} placeholder="Nome da empresa" className={inputStyle} />
             </div>
 
-            <div>
-              <label className={labelStyle} style={{ color: "#0C483E" }}>Tipo de Alvará</label>
-              <select value={form.tipo} onChange={set("tipo")} className={inputStyle}>
-                {TIPOS.map((t) => <option key={t.value} value={t.value}>{t.label}</option>)}
-              </select>
+            <div className="grid grid-cols-2 gap-4">
+              <div>
+                <label className={labelStyle} style={{ color: "#0C483E" }}>Tipo de Alvará</label>
+                <select value={form.tipo} onChange={set("tipo")} className={inputStyle}>
+                  {TIPOS.map((t) => <option key={t.value} value={t.value}>{t.label}</option>)}
+                </select>
+              </div>
+              <div>
+                <label className={labelStyle} style={{ color: "#0C483E" }}>
+                  <MapPin className="w-3.5 h-3.5 inline mr-1" />
+                  Município
+                </label>
+                <input
+                  type="text"
+                  value={form.municipio}
+                  onChange={set("municipio")}
+                  placeholder="Ex: Belo Horizonte"
+                  className={inputStyle}
+                />
+              </div>
             </div>
 
             <div>
@@ -274,36 +364,60 @@ export function EditModal({ alvara, onClose, onSaved, abaInicial = "dados" }) {
         {abaAtiva === "renovacao" && (
           <div className="px-6 py-5 space-y-5">
 
-            {/* Status atual em destaque */}
-            <div className="rounded-xl p-4 flex items-center justify-between" style={{ backgroundColor: "#f8f6f0", border: "1px solid #EADAB8" }}>
-              <div>
-                <p className="text-xs font-semibold uppercase tracking-wide text-gray-500 mb-1">Status da Renovação</p>
-                <span className={`inline-flex items-center gap-2 text-sm font-bold px-3 py-1 rounded-full ${statusInfo.cor}`}>
-                  <span className="w-2 h-2 rounded-full inline-block" style={{ backgroundColor: statusInfo.dot }} />
-                  {statusInfo.label}
-                </span>
-              </div>
-              <a
-                href={portal.url}
-                target="_blank"
-                rel="noopener noreferrer"
-                className="flex items-center gap-2 px-4 py-2 rounded-lg text-xs font-semibold text-white transition-opacity hover:opacity-80"
-                style={{ backgroundColor: "#08332C" }}
-                title={portal.label}
-              >
-                <ExternalLink className="w-3.5 h-3.5" />
-                Acessar Portal
-              </a>
+            {/* Progresso visual */}
+            <div className="rounded-xl p-4" style={{ backgroundColor: "#f8f6f0", border: "1px solid #EADAB8" }}>
+              <p className="text-xs font-semibold uppercase tracking-wide text-gray-500 mb-3">Progresso da Renovação</p>
+              <ProgressoRenovacao status={form.status_renovacao} />
             </div>
 
-            {/* Selecionar status */}
+            {/* Status + Portal */}
+            <div className="grid grid-cols-2 gap-4">
+              <div>
+                <label className={labelStyle} style={{ color: "#0C483E" }}>Atualizar Status</label>
+                <select value={form.status_renovacao} onChange={set("status_renovacao")} className={inputStyle}>
+                  {Object.entries(STATUS_RENOVACAO).map(([k, v]) => (
+                    <option key={k} value={k}>{v.label}</option>
+                  ))}
+                </select>
+              </div>
+              <div className="flex flex-col justify-end">
+                {portalUrl ? (
+                  <a
+                    href={portalUrl}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="flex items-center justify-center gap-2 px-3 py-2.5 rounded-lg text-xs font-semibold text-white transition-opacity hover:opacity-80"
+                    style={{ backgroundColor: "#08332C" }}
+                    title={portalLabel}
+                  >
+                    <ExternalLink className="w-3.5 h-3.5 shrink-0" />
+                    {portalLabel}
+                  </a>
+                ) : (
+                  <div className="rounded-lg border border-dashed border-gray-300 px-3 py-2.5 text-xs text-gray-400 text-center">
+                    Cadastre a URL do portal abaixo
+                  </div>
+                )}
+              </div>
+            </div>
+
+            {/* URL do portal personalizada */}
             <div>
-              <label className={labelStyle} style={{ color: "#0C483E" }}>Atualizar Status</label>
-              <select value={form.status_renovacao} onChange={set("status_renovacao")} className={inputStyle}>
-                {Object.entries(STATUS_RENOVACAO).map(([k, v]) => (
-                  <option key={k} value={k}>{v.label}</option>
-                ))}
-              </select>
+              <label className={labelStyle} style={{ color: "#0C483E" }}>
+                <Link className="w-3.5 h-3.5 inline mr-1" />
+                URL do Portal de Renovação
+                <span className="ml-1 text-gray-400 font-normal normal-case tracking-normal">(específica deste município)</span>
+              </label>
+              <input
+                type="url"
+                value={form.url_portal_renovacao}
+                onChange={set("url_portal_renovacao")}
+                placeholder="https://prefeitura.municipio.mg.gov.br/renovacao"
+                className={inputStyle}
+              />
+              <p className="text-xs text-gray-400 mt-1">
+                Se preenchida, prevalece sobre o portal global configurado nas configurações do sistema.
+              </p>
             </div>
 
             {/* Protocolo de renovação */}
@@ -329,7 +443,7 @@ export function EditModal({ alvara, onClose, onSaved, abaInicial = "dados" }) {
                 <p className="text-xs text-gray-400 mt-1">Quando foi protocolado</p>
               </div>
               <div>
-                <label className={labelStyle} style={{ color: "#0C483E" }}>Data de Renovação</label>
+                <label className={labelStyle} style={{ color: "#0C483E" }}>Data de Renovação Efetiva</label>
                 <input type="date" value={form.data_renovacao_efetiva} onChange={set("data_renovacao_efetiva")} className={inputStyle} />
                 <p className="text-xs text-gray-400 mt-1">Quando foi renovado</p>
               </div>
@@ -341,13 +455,13 @@ export function EditModal({ alvara, onClose, onSaved, abaInicial = "dados" }) {
               <textarea
                 value={form.observacoes_renovacao}
                 onChange={set("observacoes_renovacao")}
-                placeholder="Anotações sobre o andamento, pendências, contatos realizados..."
+                placeholder="Anotações sobre o andamento, pendências, contatos realizados, documentos solicitados..."
                 rows={4}
                 className={inputStyle + " resize-none"}
               />
             </div>
 
-            {/* Enviar ao cliente */}
+            {/* Notificar cliente */}
             <div className="rounded-xl p-4" style={{ backgroundColor: "#f0f7f4", border: "1px solid #b2d8cc" }}>
               <p className="text-xs font-semibold text-[#0C483E] mb-1">Notificar Cliente</p>
               <p className="text-xs text-gray-500 mb-3">

@@ -457,18 +457,25 @@ export function ConfigModal({ onClose, isAdmin }) {
           </div>
         )}
 
-        {/* Footer */}
-        {(aba === "smtp" || aba === "portais") && isAdmin && (
-          <div className="px-6 py-4 border-t flex justify-end" style={{ borderColor: "#EADAB8" }}>
-            <button
-              onClick={salvarConfigs}
-              disabled={salvando}
-              className="px-5 py-2 rounded-lg text-white text-sm font-semibold flex items-center gap-2 disabled:opacity-60"
-              style={{ backgroundColor: "#08332C" }}
-            >
-              {salvando ? <Loader2 className="w-4 h-4 animate-spin" /> : <Save className="w-4 h-4" />}
-              Salvar Configurações
-            </button>
+        {/* Footer — aparece em SMTP e Portais, para todos (admin salva, não-admin vê aviso) */}
+        {(aba === "smtp" || aba === "portais") && (
+          <div className="px-6 py-4 border-t flex items-center justify-between" style={{ borderColor: "#EADAB8" }}>
+            {!isAdmin && (
+              <p className="text-xs text-amber-700 bg-amber-50 border border-amber-200 rounded-lg px-3 py-1.5">
+                Apenas administradores podem salvar configurações.
+              </p>
+            )}
+            {isAdmin && (
+              <button
+                onClick={salvarConfigs}
+                disabled={salvando}
+                className="ml-auto px-5 py-2 rounded-lg text-white text-sm font-semibold flex items-center gap-2 disabled:opacity-60"
+                style={{ backgroundColor: "#08332C" }}
+              >
+                {salvando ? <Loader2 className="w-4 h-4 animate-spin" /> : <Save className="w-4 h-4" />}
+                Salvar Configurações
+              </button>
+            )}
           </div>
         )}
       </div>
