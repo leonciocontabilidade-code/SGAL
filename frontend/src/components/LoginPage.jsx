@@ -1,12 +1,14 @@
 import { useState } from "react";
-import { Lock } from "lucide-react";
+import { Lock, User } from "lucide-react";
 
 const API_BASE = import.meta.env.VITE_API_URL || "";
 
 export function LoginPage({ onLogin }) {
-  const [senha, setSenha] = useState("");
+  const [form, setForm] = useState({ username: "", senha: "" });
   const [erro, setErro] = useState("");
   const [loading, setLoading] = useState(false);
+
+  const set = (campo) => (e) => setForm((f) => ({ ...f, [campo]: e.target.value }));
 
   const handleSubmit = async (e) => {
     e.preventDefault();
@@ -16,15 +18,18 @@ export function LoginPage({ onLogin }) {
       const res = await fetch(`${API_BASE}/api/auth/login`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ senha }),
+        body: JSON.stringify({ username: form.username.trim(), senha: form.senha }),
       });
       const data = await res.json();
       if (res.ok && data.ok && data.token) {
         sessionStorage.setItem("sgal_token", data.token);
         sessionStorage.setItem("sgal_auth", "1");
-        onLogin();
+        sessionStorage.setItem("sgal_username", data.username || "");
+        sessionStorage.setItem("sgal_nome", data.nome || "");
+        sessionStorage.setItem("sgal_admin", data.admin ? "1" : "0");
+        onLogin(data);
       } else {
-        setErro(data.detail || "Senha incorreta.");
+        setErro(data.detail || "Usuário ou senha inválidos.");
       }
     } catch {
       setErro("Erro ao conectar com o servidor.");
@@ -33,11 +38,17 @@ export function LoginPage({ onLogin }) {
     }
   };
 
+  const inputStyle = {
+    width: "100%", borderRadius: "8px", padding: "12px 16px",
+    fontSize: "14px", outline: "none", backgroundColor: "#0C483E",
+    color: "#EADAB8", border: "1px solid #C6B185",
+  };
+
   return (
     <div className="min-h-screen flex items-center justify-center" style={{ backgroundColor: "#08332C" }}>
       <div className="w-full max-w-sm shadow-2xl rounded-3xl overflow-hidden">
 
-        {/* Topo — Logo preenche toda a área bege */}
+        {/* Logo */}
         <div style={{ backgroundColor: "#EADAB8", position: "relative" }}>
           <img
             src="/logo-leoncio.png"
@@ -52,7 +63,7 @@ export function LoginPage({ onLogin }) {
         {/* Divisor dourado */}
         <div style={{ height: "4px", backgroundColor: "#C6B185" }} />
 
-        {/* Baixo — Formulário sobre fundo verde escuro */}
+        {/* Formulário */}
         <div className="px-8 py-8" style={{ backgroundColor: "#08332C" }}>
           <div className="flex items-center gap-2 mb-6">
             <Lock className="w-4 h-4" style={{ color: "#C6B185" }} />
@@ -62,22 +73,38 @@ export function LoginPage({ onLogin }) {
           <form onSubmit={handleSubmit} className="space-y-4">
             <div>
               <label className="block text-xs font-medium mb-2" style={{ color: "#EADAB8" }}>
-                Senha de acesso
+                Usuário
+              </label>
+              <div className="relative">
+                <User className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4" style={{ color: "#C6B185" }} />
+                <input
+                  type="text"
+                  value={form.username}
+                  onChange={set("username")}
+                  placeholder="admin"
+                  required
+                  autoComplete="username"
+                  style={{ ...inputStyle, paddingLeft: "40px" }}
+                />
+              </div>
+            </div>
+
+            <div>
+              <label className="block text-xs font-medium mb-2" style={{ color: "#EADAB8" }}>
+                Senha
               </label>
               <input
                 type="password"
-                value={senha}
-                onChange={(e) => setSenha(e.target.value)}
+                value={form.senha}
+                onChange={set("senha")}
                 placeholder="••••••••"
                 required
-                className="w-full rounded-lg px-4 py-3 text-sm outline-none"
-                style={{ backgroundColor: "#0C483E", color: "#EADAB8", border: "1px solid #C6B185" }}
+                autoComplete="current-password"
+                style={inputStyle}
               />
             </div>
 
-            {erro && (
-              <p className="text-xs text-red-300">{erro}</p>
-            )}
+            {erro && <p className="text-xs text-red-300">{erro}</p>}
 
             <button
               type="submit"

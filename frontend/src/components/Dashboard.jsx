@@ -2,7 +2,7 @@ import { useState, useCallback } from "react";
 import {
   FileText, RefreshCw, CheckCircle, AlertTriangle,
   XCircle, HelpCircle, Filter, Trash2, Edit2, ChevronUp, ChevronDown, Bell,
-  Download, ChevronLeft, ChevronRight
+  Download, ChevronLeft, ChevronRight, Settings, User
 } from "lucide-react";
 import { useDashboard } from "../hooks/useDashboard";
 import { UploadZone } from "./UploadZone";
@@ -11,6 +11,7 @@ import { StatsCard } from "./StatsCard";
 import { StatusBadge, TipoBadge } from "./StatusBadge";
 import { EditModal } from "./EditModal";
 import { NovoAlvaraManual } from "./NovoAlvaraManual";
+import { ConfigModal } from "./ConfigModal";
 import { api } from "../services/api";
 
 const TIPOS = [
@@ -72,7 +73,7 @@ function agruparPorMes(lista) {
   return Object.entries(grupos).sort(([a], [b]) => a.localeCompare(b));
 }
 
-export function Dashboard({ onLogout }) {
+export function Dashboard({ onLogout, usuario }) {
   const { data, loading, error, recarregar } = useDashboard();
   const [filtroTipo, setFiltroTipo] = useState("TODOS");
   const [filtroStatus, setFiltroStatus] = useState(null);
@@ -82,6 +83,7 @@ export function Dashboard({ onLogout }) {
   const [abaUpload, setAbaUpload] = useState("pdf");
   const [deletando, setDeletando] = useState(null);
   const [editando, setEditando] = useState(null);
+  const [configAberto, setConfigAberto] = useState(false);
   const [notificando, setNotificando] = useState(null);
   const [toasts, setToasts] = useState([]);
 
@@ -232,6 +234,14 @@ export function Dashboard({ onLogout }) {
         />
       )}
 
+      {/* Modal de configurações */}
+      {configAberto && (
+        <ConfigModal
+          onClose={() => setConfigAberto(false)}
+          isAdmin={usuario?.admin}
+        />
+      )}
+
       {/* Header */}
       <header className="sticky top-0 z-10 shadow-md" style={{ backgroundColor: "#08332C" }}>
         <div className="w-full px-4 py-3 flex items-center justify-between">
@@ -244,20 +254,36 @@ export function Dashboard({ onLogout }) {
               <p className="text-xs" style={{ color: "#EADAB8", opacity: 0.7 }}>Gestão de Alvarás e Licenças</p>
             </div>
           </div>
-          <div className="flex items-center gap-4">
+          <div className="flex items-center gap-2">
+            {/* Usuário logado */}
+            {usuario?.nome && (
+              <div className="hidden sm:flex items-center gap-1.5 px-3 py-1.5 rounded-lg"
+                style={{ backgroundColor: "#0C483E" }}>
+                <User className="w-3.5 h-3.5" style={{ color: "#C6B185" }} />
+                <span className="text-xs font-medium" style={{ color: "#EADAB8" }}>{usuario.nome}</span>
+              </div>
+            )}
             <button
               onClick={recarregar}
               disabled={loading}
-              className="flex items-center gap-2 text-sm transition-opacity disabled:opacity-50"
+              className="flex items-center gap-1.5 text-sm px-3 py-1.5 rounded-lg transition-opacity disabled:opacity-50"
               style={{ color: "#C6B185" }}
             >
               <RefreshCw className={`w-4 h-4 ${loading ? "animate-spin" : ""}`} />
-              Atualizar
+              <span className="hidden sm:inline">Atualizar</span>
+            </button>
+            <button
+              onClick={() => setConfigAberto(true)}
+              title="Configurações"
+              className="p-2 rounded-lg transition-opacity hover:opacity-80"
+              style={{ color: "#C6B185", backgroundColor: "#0C483E" }}
+            >
+              <Settings className="w-4 h-4" />
             </button>
             {onLogout && (
               <button
                 onClick={onLogout}
-                className="text-xs px-3 py-1 rounded-lg transition-opacity"
+                className="text-xs px-3 py-1.5 rounded-lg transition-opacity"
                 style={{ color: "#EADAB8", backgroundColor: "#052B25" }}
               >
                 Sair

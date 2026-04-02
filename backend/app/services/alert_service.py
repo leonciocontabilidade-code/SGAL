@@ -100,16 +100,51 @@ async def _registrar_alerta(
     db.add(historico)
 
 
+async def _get_smtp_config() -> dict:
+    """Lê config SMTP do banco de dados; fallback para variáveis de ambiente."""
+    from app.database import AsyncSessionLocal
+    from app.models import Configuracao
+    from sqlalchemy import select
+
+    settings = get_settings()
+    base = {
+        "host": settings.smtp_host,
+        "port": settings.smtp_port,
+        "user": settings.smtp_user,
+        "password": settings.smtp_password,
+        "from_addr": settings.smtp_from or settings.smtp_user,
+        "tls": settings.smtp_tls,
+    }
+    try:
+        async with AsyncSessionLocal() as db:
+            result = await db.execute(
+                select(Configuracao).where(Configuracao.chave.in_([
+                    "smtp_host", "smtp_port", "smtp_user", "smtp_password", "smtp_from", "smtp_tls"
+                ]))
+            )
+            configs = {r.chave: r.valor for r in result.scalars().all()}
+            if configs.get("smtp_host"):
+                base["host"]      = configs.get("smtp_host", base["host"])
+                base["port"]      = int(configs.get("smtp_port") or base["port"])
+                base["user"]      = configs.get("smtp_user", base["user"])
+                base["password"]  = configs.get("smtp_password", base["password"])
+                base["from_addr"] = configs.get("smtp_from") or configs.get("smtp_user") or base["from_addr"]
+                tls_val           = configs.get("smtp_tls", "")
+                base["tls"]       = tls_val.lower() not in ("false", "0", "no") if tls_val else base["tls"]
+    except Exception as exc:
+        logger.warning("Falha ao ler SMTP do banco: %s", exc)
+    return base
+
+
 async def enviar_email_alerta(alvara: Alvara, mensagem: str) -> None:
     """
-    Envia e-mail real via SMTP se configurado no .env.
-    Requer: SMTP_HOST, SMTP_USER, SMTP_PASSWORD e email_contato no alvará.
-    Fallback: registra no log se SMTP não estiver configurado.
+    Envia e-mail real via SMTP. Lê configuração do banco (painel de config)
+    com fallback para variáveis de ambiente.
     """
-    settings = get_settings()
+    smtp = await _get_smtp_config()
 
-    if not settings.smtp_host or not settings.smtp_user or not alvara.email_contato:
-        logger.warning("📧 [SIMULAÇÃO — configure SMTP no .env] %s", mensagem)
+    if not smtp["host"] or not smtp["user"] or not alvara.email_contato:
+        logger.warning("📧 [SMTP não configurado] %s", mensagem)
         return
 
     dias = alvara.dias_para_vencer
@@ -165,19 +200,19 @@ async def enviar_email_alerta(alvara: Alvara, mensagem: str) -> None:
 
     try:
         msg = MIMEMultipart("alternative")
-        msg["From"] = settings.smtp_from or settings.smtp_user
+        msg["From"] = smtp["from_addr"]
         msg["To"] = alvara.email_contato
         msg["Subject"] = f"[SGAL] {'🔴 VENCIDO' if dias is not None and dias < 0 else '⚠️ Alerta'} — {alvara.razao_social or alvara.cnpj}"
         msg.attach(MIMEText(mensagem, "plain", "utf-8"))
         msg.attach(MIMEText(html, "html", "utf-8"))
 
-        with smtplib.SMTP(settings.smtp_host, settings.smtp_port, timeout=15) as server:
+        with smtplib.SMTP(smtp["host"], smtp["port"], timeout=15) as server:
             server.ehlo()
-            if settings.smtp_tls:
+            if smtp["tls"]:
                 server.starttls()
                 server.ehlo()
-            if settings.smtp_password:
-                server.login(settings.smtp_user, settings.smtp_password)
+            if smtp["password"]:
+                server.login(smtp["user"], smtp["password"])
             server.send_message(msg)
 
         logger.info("✅ E-mail de alerta enviado para %s (alvará %d)", alvara.email_contato, alvara.id)

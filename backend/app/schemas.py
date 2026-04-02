@@ -3,7 +3,7 @@ from typing import Optional
 from pydantic import BaseModel, Field, field_validator
 import re
 
-from app.models import TipoAlvara, StatusVencimento, StatusProcessamento, StatusRenovacao
+from app.models import TipoAlvara, StatusVencimento, StatusProcessamento, StatusRenovacao, Usuario
 
 
 # ── Resposta da IA ────────────────────────────────────────────────────────────
@@ -116,6 +116,47 @@ class DashboardResponse(BaseModel):
     total_filtrado: int = 0
     pagina: int = 1
     total_paginas: int = 1
+
+
+# ── Usuários ──────────────────────────────────────────────────────────────────
+
+class UsuarioCreate(BaseModel):
+    username: str
+    nome: str
+    email: Optional[str] = None
+    senha: str
+    admin: bool = False
+
+
+class UsuarioUpdate(BaseModel):
+    nome: Optional[str] = None
+    email: Optional[str] = None
+    senha: Optional[str] = None
+    admin: Optional[bool] = None
+    ativo: Optional[bool] = None
+
+
+class UsuarioResponse(BaseModel):
+    id: int
+    username: str
+    nome: str
+    email: Optional[str] = None
+    admin: bool
+    ativo: bool
+    criado_em: datetime
+    model_config = {"from_attributes": True}
+
+
+# ── Configurações ─────────────────────────────────────────────────────────────
+
+class ConfiguracaoItem(BaseModel):
+    chave: str
+    valor: Optional[str] = None
+    descricao: Optional[str] = None
+
+
+class ConfiguracaoLote(BaseModel):
+    configuracoes: dict[str, Optional[str]]
 
 
 # ── Alertas ───────────────────────────────────────────────────────────────────

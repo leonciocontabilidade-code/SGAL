@@ -122,6 +122,35 @@ class Alvara(Base):
         return f"<Alvara id={self.id} tipo={self.tipo} cnpj={self.cnpj}>"
 
 
+class Usuario(Base):
+    __tablename__ = "usuarios"
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True, index=True)
+    username: Mapped[str] = mapped_column(String(50), unique=True, nullable=False, index=True)
+    nome: Mapped[str] = mapped_column(String(255), nullable=False)
+    email: Mapped[Optional[str]] = mapped_column(String(255), nullable=True)
+    senha_hash: Mapped[str] = mapped_column(String(255), nullable=False)
+    admin: Mapped[bool] = mapped_column(Boolean, default=False)
+    ativo: Mapped[bool] = mapped_column(Boolean, default=True)
+    criado_em: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), server_default=func.now()
+    )
+
+    def __repr__(self) -> str:
+        return f"<Usuario id={self.id} username={self.username} admin={self.admin}>"
+
+
+class Configuracao(Base):
+    __tablename__ = "configuracoes"
+
+    chave: Mapped[str] = mapped_column(String(100), primary_key=True)
+    valor: Mapped[Optional[str]] = mapped_column(Text, nullable=True)
+    descricao: Mapped[Optional[str]] = mapped_column(String(255), nullable=True)
+
+    def __repr__(self) -> str:
+        return f"<Configuracao chave={self.chave}>"
+
+
 class HistoricoAlerta(Base):
     __tablename__ = "historico_alertas"
 

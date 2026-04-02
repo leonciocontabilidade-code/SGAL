@@ -82,3 +82,47 @@ async def init_db() -> None:
     async with engine.begin() as conn:
         await conn.run_sync(Base.metadata.create_all)
         await _run_migrations(conn)
+    await _seed_initial_data()
+
+
+async def _seed_initial_data() -> None:
+    """Cria usuário admin e configurações padrão se não existirem."""
+    import logging
+    from passlib.context import CryptContext
+    from sqlalchemy import select, func as sqlfunc
+    from app.models import Usuario, Configuracao
+
+    _log = logging.getLogger(__name__)
+    pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
+    settings = get_settings()
+
+    async with AsyncSessionLocal() as session:
+        # Cria admin padrão se não houver usuários
+        count = (await session.execute(select(sqlfunc.count()).select_from(Usuario))).scalar()
+        if count == 0:
+            session.add(Usuario(
+                username="admin",
+                nome="Administrador",
+                senha_hash=pwd_context.hash(settings.app_password),
+                admin=True,
+                ativo=True,
+            ))
+            _log.info("Usuário 'admin' criado (senha: %s)", settings.app_password)
+
+        # Cria configurações de portais padrão se não existirem
+        existing = {r[0] for r in (await session.execute(
+            select(Configuracao.chave)
+        )).all()}
+
+        portais_default = {
+            "portal_SANITARIO":     ("https://sigvisa.saude.mg.gov.br/",        "Portal Vigilância Sanitária MG"),
+            "portal_BOMBEIROS":     ("https://servicos.bombeiros.mg.gov.br/",    "Portal CBMMG"),
+            "portal_FUNCIONAMENTO": ("https://redesim.gov.br/",                  "Portal Redesim"),
+            "portal_AMA":           ("https://www.siam.mg.gov.br/",              "Portal SIAM/MG"),
+            "portal_DESCONHECIDO":  ("",                                          "Portal genérico"),
+        }
+        for chave, (valor, descricao) in portais_default.items():
+            if chave not in existing:
+                session.add(Configuracao(chave=chave, valor=valor, descricao=descricao))
+
+        await session.commit()

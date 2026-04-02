@@ -27,6 +27,37 @@ async function request(path, options = {}) {
 }
 
 export const api = {
+  admin: {
+    getConfiguracoes: () => request("/admin/configuracoes"),
+    salvarConfiguracoes: (dados) =>
+      request("/admin/configuracoes", {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ configuracoes: dados }),
+      }),
+    testarSMTP: () => request("/admin/testar-smtp", { method: "POST" }),
+    listarUsuarios: () => request("/admin/usuarios"),
+    criarUsuario: (dados) =>
+      request("/admin/usuarios", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(dados),
+      }),
+    atualizarUsuario: (id, dados) =>
+      request(`/admin/usuarios/${id}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(dados),
+      }),
+    desativarUsuario: (id) => request(`/admin/usuarios/${id}`, { method: "DELETE" }),
+    alterarSenha: (senhaAtual, novaSenha) =>
+      request("/admin/alterar-senha", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ senha_atual: senhaAtual, nova_senha: novaSenha }),
+      }),
+  },
+
   dashboard: {
     obter: (params = {}) => {
       const qs = new URLSearchParams(
