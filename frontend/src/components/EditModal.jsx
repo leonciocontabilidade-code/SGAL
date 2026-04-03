@@ -21,13 +21,12 @@ const STATUS_RENOVACAO = {
   CANCELADO:       { label: "Cancelado",              cor: "bg-red-100 text-red-700",       dot: "#ef4444", passo: -1 },
 };
 
-// Portais padrão por tipo (fallback quando não há URL personalizada)
-const PORTAIS_DEFAULT = {
-  SANITARIO:     { url: "https://sigvisa.saude.mg.gov.br/",           label: "Portal Vigilância Sanitária MG" },
-  BOMBEIROS:     { url: "https://servicos.bombeiros.mg.gov.br/",       label: "Portal CBMMG" },
-  FUNCIONAMENTO: { url: "https://redesim.gov.br/",                     label: "Portal Redesim" },
-  AMA:           { url: "https://www.siam.mg.gov.br/",                 label: "Portal SIAM/MG" },
-  DESCONHECIDO:  { url: "https://www.google.com/search?q=renovar+alvara+prefeitura", label: "Pesquisar portal" },
+const TIPO_LABELS = {
+  SANITARIO:     "Alvará Sanitário",
+  BOMBEIROS:     "Certificado do Bombeiros",
+  FUNCIONAMENTO: "Alvará de Funcionamento",
+  AMA:           "Alvará Ambiental",
+  DESCONHECIDO:  "Desconhecido",
 };
 
 // Etapas do progresso de renovação
@@ -111,6 +110,7 @@ function ProgressoRenovacao({ status }) {
 
 export function EditModal({ alvara, onClose, onSaved, abaInicial = "dados" }) {
   const [abaAtiva, setAbaAtiva] = useState(abaInicial);
+  const [portaisConfig, setPortaisConfig] = useState({}); // portais configurados no sistema
   const [form, setForm] = useState({
     razao_social: alvara.razao_social || "",
     cnpj: alvara.cnpj || "",
@@ -144,6 +144,21 @@ export function EditModal({ alvara, onClose, onSaved, abaInicial = "dados" }) {
     return () => window.removeEventListener("keydown", handler);
   }, [onClose]);
 
+  // Carrega portais configurados no sistema (⚙ Configurações → Portais)
+  useEffect(() => {
+    api.admin.getConfiguracoes()
+      .then((cfg) => {
+        setPortaisConfig({
+          SANITARIO:     cfg.portal_SANITARIO     || "",
+          BOMBEIROS:     cfg.portal_BOMBEIROS      || "",
+          FUNCIONAMENTO: cfg.portal_FUNCIONAMENTO  || "",
+          AMA:           cfg.portal_AMA            || "",
+          DESCONHECIDO:  cfg.portal_DESCONHECIDO   || "",
+        });
+      })
+      .catch(() => {}); // silencioso — campo manual ainda funciona
+  }, []);
+
   const set = (campo) => (e) => setForm((f) => ({ ...f, [campo]: e.target.value }));
 
   const handleCNPJ = (e) => {
@@ -175,18 +190,6 @@ export function EditModal({ alvara, onClose, onSaved, abaInicial = "dados" }) {
       const uf = d.uf || "";
       const email = d.email || "";
 
-      // URL do portal: auto-sugere conforme tipo e município (só se ainda não configurado)
-      const sugerirPortal = (tipo, mun, estado) => {
-        if (tipo === "BOMBEIROS")  return "https://servicos.bombeiros.mg.gov.br/";
-        if (tipo === "SANITARIO")  return "https://sigvisa.saude.mg.gov.br/";
-        if (tipo === "AMA")        return "https://www.siam.mg.gov.br/";
-        if (mun) {
-          const q = encodeURIComponent(`prefeitura ${mun} ${estado} renovação alvará`);
-          return `https://www.google.com/search?q=${q}`;
-        }
-        return "";
-      };
-
       setForm((f) => ({
         ...f,
         razao_social: d.razao_social || f.razao_social,
@@ -194,8 +197,8 @@ export function EditModal({ alvara, onClose, onSaved, abaInicial = "dados" }) {
         municipio: municipio || f.municipio,
         email_contato: email || f.email_contato,
         telefone: telefone || f.telefone,
-        // Só preenche portal se estiver vazio
-        url_portal_renovacao: f.url_portal_renovacao || sugerirPortal(f.tipo, municipio, uf),
+        // Só preenche portal se ainda vazio — usa o portal configurado para o tipo no sistema
+        url_portal_renovacao: f.url_portal_renovacao || portaisConfig[f.tipo] || "",
       }));
 
       setRfbInfo({
@@ -262,26 +265,14 @@ export function EditModal({ alvara, onClose, onSaved, abaInicial = "dados" }) {
   const inputStyle = "w-full rounded-lg border px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-[#0C483E] border-gray-200";
   const statusInfo = STATUS_RENOVACAO[form.status_renovacao] || STATUS_RENOVACAO.NAO_INICIADA;
 
-  // Portal: custom > padrão por tipo > busca por município
-  const getPortalAuto = () => {
-    const tipo = form.tipo;
-    const municipio = form.municipio || alvara.municipio || "";
-    if (tipo === "BOMBEIROS")  return { url: "https://servicos.bombeiros.mg.gov.br/", label: "Portal CBMMG (Bombeiros MG)" };
-    if (tipo === "SANITARIO")  return { url: "https://sigvisa.saude.mg.gov.br/",      label: "Portal SIGVISA (Vigilância Sanitária MG)" };
-    if (tipo === "AMA")        return { url: "https://www.siam.mg.gov.br/",           label: "Portal SIAM (Ambiental MG)" };
-    if (tipo === "FUNCIONAMENTO" && municipio) {
-      const q = encodeURIComponent(`prefeitura ${municipio} renovação alvará de funcionamento`);
-      return { url: `https://www.google.com/search?q=${q}`, label: `Buscar prefeitura de ${municipio}` };
-    }
-    if (municipio) {
-      const q = encodeURIComponent(`prefeitura ${municipio} renovação alvará`);
-      return { url: `https://www.google.com/search?q=${q}`, label: `Buscar prefeitura de ${municipio}` };
-    }
-    return { url: "", label: "Sem portal configurado" };
-  };
-  const portalAuto = getPortalAuto();
-  const portalUrl = form.url_portal_renovacao || portalAuto.url;
-  const portalLabel = form.url_portal_renovacao ? "Acessar Portal Configurado" : portalAuto.label;
+  // Portal: URL manual do alvará > portal padrão do tipo configurado no sistema
+  const portalSistema = portaisConfig[form.tipo] || "";
+  const portalUrl     = form.url_portal_renovacao || portalSistema;
+  const portalLabel   = form.url_portal_renovacao
+    ? `Acessar Portal — ${TIPO_LABELS[form.tipo] || form.tipo}`
+    : portalSistema
+      ? `Portal Padrão — ${TIPO_LABELS[form.tipo] || form.tipo}`
+      : "Nenhum portal configurado";
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm p-4">
@@ -466,23 +457,38 @@ export function EditModal({ alvara, onClose, onSaved, abaInicial = "dados" }) {
               </div>
             </div>
 
-            {/* URL do portal personalizada */}
-            <div>
-              <label className={labelStyle} style={{ color: "#0C483E" }}>
-                <Link className="w-3.5 h-3.5 inline mr-1" />
-                URL do Portal de Renovação
-                <span className="ml-1 text-gray-400 font-normal normal-case tracking-normal">(específica deste município)</span>
-              </label>
-              <input
-                type="text"
-                value={form.url_portal_renovacao}
-                onChange={set("url_portal_renovacao")}
-                placeholder="https://prefeitura.municipio.mg.gov.br/renovacao"
-                className={inputStyle}
-              />
-              <p className="text-xs text-gray-400 mt-1">
-                Se preenchida, prevalece sobre o portal global configurado nas configurações do sistema.
-              </p>
+            {/* URL do portal — manual por alvará */}
+            <div className="rounded-xl p-4 space-y-3" style={{ backgroundColor: "#f8f6f0", border: "1px solid #EADAB8" }}>
+              <div>
+                <label className={labelStyle} style={{ color: "#0C483E" }}>
+                  <Link className="w-3.5 h-3.5 inline mr-1" />
+                  URL do Portal de Renovação
+                  {form.url_portal_renovacao
+                    ? <span className="ml-2 px-1.5 py-0.5 rounded text-[10px] bg-green-100 text-green-700 font-semibold normal-case tracking-normal">Personalizado</span>
+                    : portalSistema
+                      ? <span className="ml-2 px-1.5 py-0.5 rounded text-[10px] bg-blue-100 text-blue-700 font-semibold normal-case tracking-normal">Padrão do sistema</span>
+                      : <span className="ml-2 px-1.5 py-0.5 rounded text-[10px] bg-red-100 text-red-600 font-semibold normal-case tracking-normal">Não configurado</span>
+                  }
+                </label>
+                <input
+                  type="text"
+                  value={form.url_portal_renovacao}
+                  onChange={set("url_portal_renovacao")}
+                  placeholder={portalSistema || "https://site-da-prefeitura-ou-orgao.gov.br"}
+                  className={inputStyle}
+                />
+              </div>
+              {!portalSistema && !form.url_portal_renovacao && (
+                <p className="text-xs rounded-lg bg-amber-50 border border-amber-200 text-amber-700 px-3 py-2">
+                  ⚠ Nenhum portal padrão configurado para <strong>{TIPO_LABELS[form.tipo]}</strong>.<br />
+                  Digite a URL acima <em>ou</em> configure um padrão em <strong>⚙ Configurações → Portais</strong> (vale para todos os alvarás desse tipo).
+                </p>
+              )}
+              {portalSistema && !form.url_portal_renovacao && (
+                <p className="text-xs text-gray-500">
+                  Usando portal padrão do sistema. Preencha para usar um link específico para esta empresa.
+                </p>
+              )}
             </div>
 
             {/* Protocolo de renovação */}
