@@ -134,6 +134,7 @@ export function EditModal({ alvara, onClose, onSaved, abaInicial = "dados" }) {
   const [buscandoCNPJ, setBuscandoCNPJ] = useState(false);
   const [cnpjOk, setCnpjOk] = useState(false);
   const [erroCNPJ, setErroCNPJ] = useState(null);
+  const [rfbInfo, setRfbInfo] = useState(null); // resumo do que foi preenchido pela RFB
   const [enviandoNotif, setEnviandoNotif] = useState(false);
   const [notifOk, setNotifOk] = useState(false);
 
@@ -158,22 +159,50 @@ export function EditModal({ alvara, onClose, onSaved, abaInicial = "dados" }) {
     setBuscandoCNPJ(true);
     setErroCNPJ(null);
     setCnpjOk(false);
+    setRfbInfo(null);
     try {
       const res = await fetch(`https://brasilapi.com.br/api/cnpj/v1/${digits}`);
       if (!res.ok) throw new Error("CNPJ não encontrado na Receita Federal");
-      const dados = await res.json();
-      // Montar telefone a partir dos campos da BrasilAPI
-      const ddd = dados.ddd_telefone_1 || dados.ddd_fax || "";
-      const tel = dados.telefone_1 || dados.fax || "";
-      const telefoneRFB = ddd && tel ? `(${ddd.trim()}) ${tel.trim()}` : (ddd + tel).trim() || "";
+      const d = await res.json();
+
+      // Telefone: BrasilAPI retorna "telefone" já formatado, ou ddd+numero separados
+      const telefone =
+        d.telefone ||
+        (d.ddd_telefone_1 ? `(${String(d.ddd_telefone_1).trim()}) ${String(d.ddd_telefone_1 && d.telefone_1 ? d.telefone_1 : "").trim()}` : "") ||
+        "";
+
+      const municipio = d.municipio || "";
+      const uf = d.uf || "";
+      const email = d.email || "";
+
+      // URL do portal: auto-sugere conforme tipo e município (só se ainda não configurado)
+      const sugerirPortal = (tipo, mun, estado) => {
+        if (tipo === "BOMBEIROS")  return "https://servicos.bombeiros.mg.gov.br/";
+        if (tipo === "SANITARIO")  return "https://sigvisa.saude.mg.gov.br/";
+        if (tipo === "AMA")        return "https://www.siam.mg.gov.br/";
+        if (mun) {
+          const q = encodeURIComponent(`prefeitura ${mun} ${estado} renovação alvará`);
+          return `https://www.google.com/search?q=${q}`;
+        }
+        return "";
+      };
+
       setForm((f) => ({
         ...f,
-        razao_social: dados.razao_social || f.razao_social,
+        razao_social: d.razao_social || f.razao_social,
         cnpj: formatarCNPJ(digits),
-        municipio: dados.municipio || f.municipio,
-        email_contato: dados.email || f.email_contato,
-        telefone: telefoneRFB || f.telefone,
+        municipio: municipio || f.municipio,
+        email_contato: email || f.email_contato,
+        telefone: telefone || f.telefone,
+        // Só preenche portal se estiver vazio
+        url_portal_renovacao: f.url_portal_renovacao || sugerirPortal(f.tipo, municipio, uf),
       }));
+
+      setRfbInfo({
+        email: email || null,
+        telefone: telefone || null,
+        municipio: municipio ? `${municipio}${uf ? "/" + uf : ""}` : null,
+      });
       setCnpjOk(true);
     } catch (e) {
       setErroCNPJ(e.message);
@@ -233,11 +262,26 @@ export function EditModal({ alvara, onClose, onSaved, abaInicial = "dados" }) {
   const inputStyle = "w-full rounded-lg border px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-[#0C483E] border-gray-200";
   const statusInfo = STATUS_RENOVACAO[form.status_renovacao] || STATUS_RENOVACAO.NAO_INICIADA;
 
-  // URL do portal: usa a custom do alvará, senão o padrão global do tipo
-  const portalUrl = form.url_portal_renovacao || PORTAIS_DEFAULT[form.tipo]?.url || "";
-  const portalLabel = form.url_portal_renovacao
-    ? "Acessar Portal Configurado"
-    : (PORTAIS_DEFAULT[form.tipo]?.label || "Acessar Portal");
+  // Portal: custom > padrão por tipo > busca por município
+  const getPortalAuto = () => {
+    const tipo = form.tipo;
+    const municipio = form.municipio || alvara.municipio || "";
+    if (tipo === "BOMBEIROS")  return { url: "https://servicos.bombeiros.mg.gov.br/", label: "Portal CBMMG (Bombeiros MG)" };
+    if (tipo === "SANITARIO")  return { url: "https://sigvisa.saude.mg.gov.br/",      label: "Portal SIGVISA (Vigilância Sanitária MG)" };
+    if (tipo === "AMA")        return { url: "https://www.siam.mg.gov.br/",           label: "Portal SIAM (Ambiental MG)" };
+    if (tipo === "FUNCIONAMENTO" && municipio) {
+      const q = encodeURIComponent(`prefeitura ${municipio} renovação alvará de funcionamento`);
+      return { url: `https://www.google.com/search?q=${q}`, label: `Buscar prefeitura de ${municipio}` };
+    }
+    if (municipio) {
+      const q = encodeURIComponent(`prefeitura ${municipio} renovação alvará`);
+      return { url: `https://www.google.com/search?q=${q}`, label: `Buscar prefeitura de ${municipio}` };
+    }
+    return { url: "", label: "Sem portal configurado" };
+  };
+  const portalAuto = getPortalAuto();
+  const portalUrl = form.url_portal_renovacao || portalAuto.url;
+  const portalLabel = form.url_portal_renovacao ? "Acessar Portal Configurado" : portalAuto.label;
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm p-4">
@@ -311,7 +355,14 @@ export function EditModal({ alvara, onClose, onSaved, abaInicial = "dados" }) {
                 </button>
               </div>
               {erroCNPJ && <p className="text-xs text-red-500 mt-1">{erroCNPJ}</p>}
-              {cnpjOk && <p className="text-xs text-green-600 mt-1">✓ Dados preenchidos pela Receita Federal</p>}
+              {cnpjOk && rfbInfo && (
+                <div className="mt-2 rounded-lg px-3 py-2 bg-green-50 border border-green-200 text-xs text-green-700 space-y-0.5">
+                  <p className="font-semibold">✓ Dados da Receita Federal:</p>
+                  <p>• Município: {rfbInfo.municipio || <span className="text-gray-400">não informado</span>}</p>
+                  <p>• E-mail: {rfbInfo.email || <span className="text-gray-400">não cadastrado na RFB</span>}</p>
+                  <p>• Telefone: {rfbInfo.telefone || <span className="text-gray-400">não informado</span>}</p>
+                </div>
+              )}
             </div>
 
             <div>
