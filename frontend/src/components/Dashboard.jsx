@@ -4,7 +4,7 @@ import {
   XCircle, HelpCircle, Trash2, Edit2, ChevronUp, ChevronDown, Bell,
   Download, ChevronLeft, ChevronRight, Settings, User, RotateCcw,
   ShieldAlert, Flame, Building2, Leaf, Plus, Search, X,
-  LayoutDashboard, List, AlertOctagon, Menu
+  LayoutDashboard, List, AlertOctagon
 } from "lucide-react";
 import { useDashboard } from "../hooks/useDashboard";
 import { UploadZone } from "./UploadZone";
@@ -463,8 +463,32 @@ export function Dashboard({ onLogout, usuario }) {
       {/* ════════════════════════════════════════════════════════════════════ */}
       {/* SIDEBAR                                                             */}
       {/* ════════════════════════════════════════════════════════════════════ */}
+      <div
+        className="relative flex-shrink-0 transition-all duration-300"
+        style={{ width: sidebarAberta ? "272px" : "64px" }}
+      >
+        {/* Botão de minimizar/expandir na borda direita */}
+        <button
+          onClick={() => setSidebarAberta((v) => !v)}
+          title={sidebarAberta ? "Recolher menu" : "Expandir menu"}
+          className="absolute z-30 flex items-center justify-center rounded-full shadow-lg transition-all duration-200 hover:scale-110"
+          style={{
+            right: "-13px",
+            top: "72px",
+            width: "26px",
+            height: "26px",
+            backgroundColor: "#0C483E",
+            border: "2px solid rgba(198,177,133,0.45)",
+            color: "#C6B185",
+          }}
+        >
+          {sidebarAberta
+            ? <ChevronLeft className="w-3.5 h-3.5" />
+            : <ChevronRight className="w-3.5 h-3.5" />}
+        </button>
+
       <aside
-        className="flex flex-col flex-shrink-0 transition-all duration-300"
+        className="flex flex-col transition-all duration-300"
         style={{
           width: sidebarAberta ? "272px" : "64px",
           backgroundColor: "#08332C",
@@ -487,13 +511,6 @@ export function Dashboard({ onLogout, usuario }) {
               <p className="text-[10px] leading-tight" style={{ color: "rgba(234,218,184,0.55)" }}>Gestão de Alvarás</p>
             </div>
           )}
-          <button
-            onClick={() => setSidebarAberta((v) => !v)}
-            className="ml-auto p-1 rounded-lg hover:opacity-70 flex-shrink-0"
-            style={{ color: "rgba(198,177,133,0.6)" }}
-          >
-            <Menu className="w-4 h-4" />
-          </button>
         </div>
 
         {sidebarAberta && (
@@ -699,6 +716,7 @@ export function Dashboard({ onLogout, usuario }) {
           )}
         </div>
       </aside>
+      </div>
 
       {/* ════════════════════════════════════════════════════════════════════ */}
       {/* MAIN CONTENT                                                        */}
