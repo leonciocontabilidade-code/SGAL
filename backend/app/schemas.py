@@ -40,6 +40,7 @@ class AlvaraBase(BaseModel):
     data_emissao: Optional[date] = None
     data_vencimento: Optional[date] = None
     email_contato: Optional[str] = None
+    telefone: Optional[str] = None
     municipio: Optional[str] = None
 
 
@@ -58,6 +59,7 @@ class AlvaraUpdate(BaseModel):
     email_contato: Optional[str] = None
     alerta_resolvido: Optional[bool] = None
     # Renovação
+    telefone: Optional[str] = None
     municipio: Optional[str] = None
     status_renovacao: Optional[StatusRenovacao] = None
     data_protocolo_renovacao: Optional[date] = None
@@ -80,6 +82,7 @@ class AlvaraResponse(AlvaraBase):
     atualizado_em: datetime
 
     # Renovação
+    telefone: Optional[str] = None
     municipio: Optional[str] = None
     status_renovacao: StatusRenovacao = StatusRenovacao.NAO_INICIADA
     data_protocolo_renovacao: Optional[date] = None

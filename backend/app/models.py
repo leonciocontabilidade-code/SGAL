@@ -57,6 +57,7 @@ class Alvara(Base):
 
     # Contato para alertas
     email_contato: Mapped[Optional[str]] = mapped_column(String(255), nullable=True)
+    telefone: Mapped[Optional[str]] = mapped_column(String(30), nullable=True)
 
     # Controle do arquivo
     nome_arquivo: Mapped[str] = mapped_column(String(255), nullable=False)

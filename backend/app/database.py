@@ -62,6 +62,7 @@ async def _run_migrations(conn) -> None:
             ("data_renovacao_efetiva",    "ALTER TABLE alvaras ADD COLUMN data_renovacao_efetiva DATE"),
             ("municipio",                 "ALTER TABLE alvaras ADD COLUMN municipio VARCHAR(200)"),
             ("url_portal_renovacao",      "ALTER TABLE alvaras ADD COLUMN url_portal_renovacao VARCHAR(500)"),
+            ("telefone",                  "ALTER TABLE alvaras ADD COLUMN telefone VARCHAR(30)"),
         ]
         for col_name, sql in sqlite_migrations:
             if col_name not in cols:
@@ -77,6 +78,7 @@ async def _run_migrations(conn) -> None:
             "ALTER TABLE alvaras ADD COLUMN IF NOT EXISTS data_renovacao_efetiva DATE",
             "ALTER TABLE alvaras ADD COLUMN IF NOT EXISTS municipio VARCHAR(200)",
             "ALTER TABLE alvaras ADD COLUMN IF NOT EXISTS url_portal_renovacao VARCHAR(500)",
+            "ALTER TABLE alvaras ADD COLUMN IF NOT EXISTS telefone VARCHAR(30)",
         ]
         for sql in pg_migrations:
             await conn.execute(text(sql))

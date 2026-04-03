@@ -1,7 +1,7 @@
 import { useState, useEffect } from "react";
 import {
   X, Save, Loader2, Search, CheckCircle, Mail, RefreshCw,
-  ExternalLink, Send, FileText, ClipboardList, MapPin, Link
+  ExternalLink, Send, FileText, ClipboardList, MapPin, Link, Phone
 } from "lucide-react";
 import { api } from "../services/api";
 
@@ -119,6 +119,7 @@ export function EditModal({ alvara, onClose, onSaved, abaInicial = "dados" }) {
     data_emissao: alvara.data_emissao || "",
     data_vencimento: alvara.data_vencimento || "",
     email_contato: alvara.email_contato || "",
+    telefone: alvara.telefone || "",
     municipio: alvara.municipio || "",
     // Renovação
     status_renovacao: alvara.status_renovacao || "NAO_INICIADA",
@@ -161,11 +162,17 @@ export function EditModal({ alvara, onClose, onSaved, abaInicial = "dados" }) {
       const res = await fetch(`https://brasilapi.com.br/api/cnpj/v1/${digits}`);
       if (!res.ok) throw new Error("CNPJ não encontrado na Receita Federal");
       const dados = await res.json();
+      // Montar telefone a partir dos campos da BrasilAPI
+      const ddd = dados.ddd_telefone_1 || dados.ddd_fax || "";
+      const tel = dados.telefone_1 || dados.fax || "";
+      const telefoneRFB = ddd && tel ? `(${ddd.trim()}) ${tel.trim()}` : (ddd + tel).trim() || "";
       setForm((f) => ({
         ...f,
         razao_social: dados.razao_social || f.razao_social,
         cnpj: formatarCNPJ(digits),
         municipio: dados.municipio || f.municipio,
+        email_contato: dados.email || f.email_contato,
+        telefone: telefoneRFB || f.telefone,
       }));
       setCnpjOk(true);
     } catch (e) {
@@ -182,6 +189,7 @@ export function EditModal({ alvara, onClose, onSaved, abaInicial = "dados" }) {
       const payload = {
         tipo: form.tipo,
         email_contato: form.email_contato || null,
+        telefone: form.telefone || null,
         municipio: form.municipio || null,
         // Renovação
         status_renovacao: form.status_renovacao,
@@ -349,13 +357,23 @@ export function EditModal({ alvara, onClose, onSaved, abaInicial = "dados" }) {
               </div>
             </div>
 
-            <div>
-              <label className={labelStyle} style={{ color: "#0C483E" }}>
-                <Mail className="w-3.5 h-3.5 inline mr-1" />
-                E-mail para alertas
-              </label>
-              <input type="email" value={form.email_contato} onChange={set("email_contato")} placeholder="responsavel@empresa.com.br" className={inputStyle} />
-              <p className="text-xs text-gray-400 mt-1">Usado para envio de alertas e notificações de renovação.</p>
+            <div className="grid grid-cols-2 gap-4">
+              <div>
+                <label className={labelStyle} style={{ color: "#0C483E" }}>
+                  <Mail className="w-3.5 h-3.5 inline mr-1" />
+                  E-mail para alertas
+                </label>
+                <input type="email" value={form.email_contato} onChange={set("email_contato")} placeholder="responsavel@empresa.com.br" className={inputStyle} />
+                <p className="text-xs text-gray-400 mt-1">Usado para alertas e notificações.</p>
+              </div>
+              <div>
+                <label className={labelStyle} style={{ color: "#0C483E" }}>
+                  <Phone className="w-3.5 h-3.5 inline mr-1" />
+                  Telefone / WhatsApp
+                </label>
+                <input type="tel" value={form.telefone} onChange={set("telefone")} placeholder="(31) 99999-9999" className={inputStyle} />
+                <p className="text-xs text-gray-400 mt-1">Preenchido automaticamente pela RFB.</p>
+              </div>
             </div>
           </div>
         )}
@@ -381,23 +399,19 @@ export function EditModal({ alvara, onClose, onSaved, abaInicial = "dados" }) {
                 </select>
               </div>
               <div className="flex flex-col justify-end">
-                {portalUrl ? (
-                  <a
-                    href={portalUrl}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="flex items-center justify-center gap-2 px-3 py-2.5 rounded-lg text-xs font-semibold text-white transition-opacity hover:opacity-80"
-                    style={{ backgroundColor: "#08332C" }}
-                    title={portalLabel}
-                  >
-                    <ExternalLink className="w-3.5 h-3.5 shrink-0" />
-                    {portalLabel}
-                  </a>
-                ) : (
-                  <div className="rounded-lg border border-dashed border-gray-300 px-3 py-2.5 text-xs text-gray-400 text-center">
-                    Cadastre a URL do portal abaixo
-                  </div>
-                )}
+                <button
+                  type="button"
+                  onClick={() => {
+                    if (portalUrl) window.open(portalUrl, "_blank", "noopener,noreferrer");
+                    else alert("Configure a URL do portal no campo abaixo.");
+                  }}
+                  className="flex items-center justify-center gap-2 px-3 py-2.5 rounded-lg text-xs font-semibold text-white transition-opacity hover:opacity-80"
+                  style={{ backgroundColor: portalUrl ? "#08332C" : "#6b7280" }}
+                  title={portalUrl ? portalLabel : "Nenhum portal configurado"}
+                >
+                  <ExternalLink className="w-3.5 h-3.5 shrink-0" />
+                  {portalUrl ? portalLabel : "Sem portal configurado"}
+                </button>
               </div>
             </div>
 
@@ -409,7 +423,7 @@ export function EditModal({ alvara, onClose, onSaved, abaInicial = "dados" }) {
                 <span className="ml-1 text-gray-400 font-normal normal-case tracking-normal">(específica deste município)</span>
               </label>
               <input
-                type="url"
+                type="text"
                 value={form.url_portal_renovacao}
                 onChange={set("url_portal_renovacao")}
                 placeholder="https://prefeitura.municipio.mg.gov.br/renovacao"
