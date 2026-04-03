@@ -29,6 +29,13 @@ const TIPO_LABELS = {
   DESCONHECIDO:  "Desconhecido",
 };
 
+// Portais padrão por UF (sobrepõe config do sistema apenas se vazio)
+const PORTAIS_POR_UF = {
+  GO: {
+    BOMBEIROS: "https://www.bombeiros.go.gov.br/",
+  },
+};
+
 // Etapas do progresso de renovação
 const ETAPAS = [
   { key: "identificado", label: "Identificado",  passo: 0 },
@@ -197,8 +204,8 @@ export function EditModal({ alvara, onClose, onSaved, abaInicial = "dados" }) {
         municipio: municipio || f.municipio,
         email_contato: email || f.email_contato,
         telefone: telefone || f.telefone,
-        // Só preenche portal se ainda vazio — usa o portal configurado para o tipo no sistema
-        url_portal_renovacao: f.url_portal_renovacao || portaisConfig[f.tipo] || "",
+        // Só preenche portal se ainda vazio — prioridade: manual > config sistema > UF automático
+        url_portal_renovacao: f.url_portal_renovacao || portaisConfig[f.tipo] || PORTAIS_POR_UF[uf]?.[f.tipo] || "",
       }));
 
       setRfbInfo({
